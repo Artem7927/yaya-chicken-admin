@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>YaYa Курьер</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Nunito:wght@400;600;700;800;900&display=swap');
+:root{--bg:#0E0D0B;--panel:#17150F;--panel2:#1E1B14;--gold:#F4B400;--gold-d:#D99A00;
+  --text:#F5F2EA;--text2:#9E988B;--muted:#6E6A5E;--border:rgba(255,255,255,.07);--border2:rgba(255,255,255,.13);
+  --green:#35C77E;--blue:#4C8DFF;--orange:#F58220;--red:#F0453A}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{background:#000;color:var(--text);font-family:Nunito,sans-serif}
+body{display:flex;justify-content:center}
+.app{width:100%;max-width:480px;min-height:100vh;background:var(--bg);padding-bottom:24px}
+a{color:inherit}button{font-family:inherit;cursor:pointer}
+.hd{position:sticky;top:0;z-index:10;background:rgba(14,13,11,.92);backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--border);padding:14px 16px;display:flex;align-items:center;gap:11px}
+.mark{width:40px;height:40px;border-radius:11px;flex:none;background:radial-gradient(circle at 34% 28%,#FFD860,var(--gold) 55%,var(--gold-d));
+  display:flex;align-items:center;justify-content:center;font:900 11px Nunito;color:#3a2b00}
+.hd .nm{font-family:'Bebas Neue';font-size:20px;letter-spacing:.5px;line-height:1}
+.hd .sb{font-size:11px;color:var(--text2);font-weight:700}
+.pad{padding:16px}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:14px}
+
+.online-card{display:flex;align-items:center;gap:14px}
+.online-card .txt{flex:1}
+.online-card .st{font-family:'Bebas Neue';font-size:22px;letter-spacing:.5px}
+.online-card .sub{font-size:12px;color:var(--text2);font-weight:700;margin-top:2px}
+.sw{width:60px;height:34px;border-radius:20px;background:#38342b;position:relative;flex:none;transition:.2s;border:none}
+.sw::after{content:"";position:absolute;top:4px;left:4px;width:26px;height:26px;border-radius:50%;background:#fff;transition:.2s}
+.sw.on{background:var(--green)} .sw.on::after{left:30px}
+.dotline{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:800;margin-top:10px}
+.dotline i{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+.dotline.live i{background:var(--green)}
+
+.sechd{font-family:'Bebas Neue';font-size:19px;letter-spacing:.5px;margin:4px 2px 10px}
+.ord{background:var(--panel);border:1px solid var(--border);border-left:3px solid var(--gold);border-radius:16px;padding:14px;margin-bottom:12px}
+.ord .r1{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.ord .no{font-weight:900;font-size:15px}
+.badge{font-size:11px;font-weight:900;padding:3px 9px;border-radius:8px;margin-left:auto}
+.b-assigned{background:rgba(76,141,255,.16);color:var(--blue)}
+.b-on_way{background:rgba(245,130,32,.18);color:var(--orange)}
+.b-delivered{background:rgba(53,199,126,.16);color:var(--green)}
+.line{display:flex;align-items:flex-start;gap:8px;font-size:13.5px;color:var(--text);font-weight:600;margin:6px 0}
+.line svg{width:16px;height:16px;stroke:var(--muted);fill:none;stroke-width:2;flex:none;margin-top:2px}
+.line a{color:var(--blue);font-weight:800}
+.sum{font-family:'Bebas Neue';font-size:20px;letter-spacing:.4px;margin-top:6px}
+.btns{display:flex;gap:8px;margin-top:12px}
+.btns button{flex:1;border:1px solid var(--border2);background:var(--panel2);color:var(--text);border-radius:11px;padding:12px 6px;font-weight:800;font-size:13px}
+.btns button.go{background:var(--orange);border-color:var(--orange);color:#160c00}
+.btns button.done{background:var(--green);border-color:var(--green);color:#062012}
+.nav-btn{width:100%;background:var(--panel2);border:1px solid var(--border2);color:var(--gold);border-radius:12px;padding:12px;font-weight:800;font-size:13px}
+.empty{text-align:center;color:var(--muted);padding:34px 16px;font-weight:700}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:60;background:#2A261C;border:1px solid var(--border2);
+  color:var(--text);padding:12px 18px;border-radius:12px;font-weight:800;font-size:14px;opacity:0;pointer-events:none;transition:.25s}
+.toast.show{opacity:1;bottom:32px}
+.err{background:rgba(240,69,58,.12);border:1px solid rgba(240,69,58,.4);color:var(--red);border-radius:12px;padding:12px 14px;font-size:13px;font-weight:800;margin-bottom:14px;display:none}
+.err.show{display:block}
+
+.gate{position:fixed;inset:0;z-index:100;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:26px;gap:14px}
+.gate .mark{width:64px;height:64px;border-radius:18px;font-size:14px}
+.gate h2{font-family:'Bebas Neue';font-size:28px;letter-spacing:.6px}
+.gate p{color:var(--text2);font-size:13px;font-weight:700;text-align:center}
+.gate select,.gate input{width:100%;max-width:320px;background:var(--panel2);border:1px solid var(--border2);color:var(--text);
+  border-radius:13px;padding:15px;font-size:16px;font-weight:800;text-align:center}
+.gate button{width:100%;max-width:320px;background:var(--gold);color:#1a1400;border:none;border-radius:13px;padding:15px;font-weight:900;font-size:16px}
+</style>
+</head>
+<body>
+<div class="app" id="app" style="display:none">
+  <header class="hd">
+    <div class="mark">YaYa</div>
+    <div><div class="nm">YAYA · КУРЬЕР</div><div class="sb" id="hdName">—</div></div>
+  </header>
+  <div class="pad">
+    <div class="err" id="geoErr"></div>
+
+    <div class="card online-card">
+      <div class="txt">
+        <div class="st" id="onlineTitle">НЕ НА ЛИНИИ</div>
+        <div class="sub">Включи, чтобы делиться местоположением</div>
+        <div class="dotline" id="live"><i></i><span id="liveTxt">GPS выключен</span></div>
+      </div>
+      <button class="sw" id="onlineSw" onclick="toggleOnline()"></button>
+    </div>
+
+    <div class="sechd">Мои заказы</div>
+    <div id="myOrders"><div class="empty">Загружаю…</div></div>
+
+    <button class="nav-btn" onclick="logout()">Сменить курьера</button>
+  </div>
+</div>
+
+<div class="gate" id="gate">
+  <div class="mark">YaYa</div>
+  <h2>YAYA · КУРЬЕР</h2>
+  <p>Выбери своё имя, чтобы выйти на смену</p>
+  <select id="pickName"><option value="">Загружаю список…</option></select>
+  <input id="typeName" placeholder="…или впиши имя вручную">
+  <button onclick="enter()">Продолжить</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API='https://yaya-db-production.up.railway.app';
+const POS_KEY='yaya_courier_pos';
+const COUR_KEY='yaya_order_couriers';
+const SEND_EVERY=15000;      // как часто слать координаты, мс
+
+let ME='', online=false, lastPos=null, watchId=null, sendTimer=null, pollTimer=null, ORDERS=[];
+const DST_LABEL={pending:'Ожидает',assigned:'Назначен',on_way:'В пути',delivered:'Доставлен'};
+
+function fetchT(url,opts,ms){ms=ms||9000;const c=new AbortController();const t=setTimeout(()=>c.abort(),ms);
+  return fetch(url,Object.assign({signal:c.signal},opts)).finally(()=>clearTimeout(t));}
+async function get(k){ const r=await fetchT(API+'/kv/'+k,{cache:'no-store'}); const j=await r.json(); return j.value; }
+async function put(k,v){ for(let i=0;i<3;i++){ try{ const r=await fetchT(API+'/kv/'+k,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(v)}); if(r.ok)return true; }catch(e){} await new Promise(r=>setTimeout(r,1000)); } return false; }
+let tT; function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(tT);tT=setTimeout(()=>t.classList.remove('show'),2600);}
+
+/* ── Вход ── */
+async function fillNames(){
+  let list=[];
+  try{ const v=await get('yaya_couriers'); if(Array.isArray(v)) list=v; }catch(e){}
+  const sel=document.getElementById('pickName');
+  sel.innerHTML='<option value="">— выбери имя —</option>'+list.map(n=>`<option>${n}</option>`).join('');
+}
+function enter(){
+  const name=(document.getElementById('typeName').value.trim())||document.getElementById('pickName').value;
+  if(!name){ toast('Выбери или впиши имя'); return; }
+  ME=name; localStorage.setItem('yaya_courier_me',ME); openApp();
+}
+function logout(){ setOnline(false); localStorage.removeItem('yaya_courier_me'); location.reload(); }
+function openApp(){
+  document.getElementById('gate').style.display='none';
+  document.getElementById('app').style.display='';
+  document.getElementById('hdName').textContent=ME;
+  registerMe();
+  loadOrders();
+  if(pollTimer)clearInterval(pollTimer);
+  pollTimer=setInterval(loadOrders,10000);
+}
+/* добавляем себя в список курьеров, чтобы админ сразу видел */
+async function registerMe(){
+  try{
+    let list=[]; const v=await get('yaya_couriers'); if(Array.isArray(v))list=v;
+    if(!list.includes(ME)){ list.push(ME); await put('yaya_couriers',list); }
+  }catch(e){}
+}
+
+/* ── Онлайн + GPS ── */
+function toggleOnline(){ setOnline(!online); }
+function setOnline(on){
+  online=on;
+  document.getElementById('onlineSw').classList.toggle('on',on);
+  document.getElementById('onlineTitle').textContent=on?'НА ЛИНИИ':'НЕ НА ЛИНИИ';
+  const err=document.getElementById('geoErr'); err.classList.remove('show');
+  if(on){
+    if(!('geolocation' in navigator)){ err.textContent='Телефон не поддерживает геолокацию.'; err.classList.add('show'); setOnline(false); return; }
+    watchId=navigator.geolocation.watchPosition(p=>{
+      lastPos={lat:p.coords.latitude,lng:p.coords.longitude,ts:Date.now()};
+      setLive(true);
+    },e=>{
+      err.textContent='Нет доступа к геолокации. Разреши доступ в настройках браузера.'; err.classList.add('show');
+      setLive(false);
+    },{enableHighAccuracy:true,maximumAge:5000,timeout:20000});
+    sendPos();
+    if(sendTimer)clearInterval(sendTimer);
+    sendTimer=setInterval(sendPos,SEND_EVERY);
+  }else{
+    if(watchId!=null)navigator.geolocation.clearWatch(watchId);
+    if(sendTimer)clearInterval(sendTimer);
+    watchId=null; setLive(false,'GPS выключен');
+    removePos();
+  }
+}
+function setLive(on,txt){
+  document.getElementById('live').classList.toggle('live',on);
+  document.getElementById('liveTxt').textContent=txt|| (on?('Координаты отправляются'+(lastPos?' · '+new Date(lastPos.ts).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}):'')):'Жду сигнал GPS…');
+}
+async function sendPos(){
+  if(!online||!lastPos) return;
+  let pos={}; try{ const v=await get(POS_KEY); if(v&&typeof v==='object')pos=v; }catch(e){}
+  pos[ME]={lat:lastPos.lat,lng:lastPos.lng,ts:lastPos.ts};
+  const ok=await put(POS_KEY,pos);
+  setLive(true); if(!ok)toast('Координаты не ушли — повтор позже');
+}
+async function removePos(){
+  try{ let v=await get(POS_KEY); if(v&&typeof v==='object'){ delete v[ME]; await put(POS_KEY,v); } }catch(e){}
+}
+
+/* ── Мои заказы ── */
+function parse(o){
+  const d=o.data||{};
+  return {id:o.id,num:o.num||o.id,address:(d.address||'').trim(),
+    phone:d.recipient_phone||d.pay_phone||d.phone||'',
+    total:(Number(d.total)||0)+(Number(d.delivery)||0),
+    items:Array.isArray(d.items)?d.items:[]};
+}
+async function loadOrders(){
+  let orders=[],cour={};
+  try{ const r=await fetchT(API+'/orders?limit=100',{cache:'no-store'}); const j=await r.json(); orders=j.orders||[]; }catch(e){ return; }
+  try{ const v=await get(COUR_KEY); if(v&&typeof v==='object')cour=v; }catch(e){}
+  // назначения курьеров храним в KV — накладываем
+  orders.forEach(o=>{ const c=cour[o.id]; if(c){ o.courier=c.courier; o.delivery_status=c.delivery_status; } });
+  ORDERS=orders.filter(o=>o.courier===ME && o.delivery_status!=='delivered').map(o=>({...parse(o),dst:o.delivery_status||'assigned'}));
+  render();
+}
+function render(){
+  const box=document.getElementById('myOrders');
+  if(!ORDERS.length){ box.innerHTML=`<div class="empty">Пока нет заказов на доставку.<br>Как только тебе назначат заказ — он появится здесь.</div>`; return; }
+  box.innerHTML=ORDERS.map(o=>`
+    <div class="ord">
+      <div class="r1"><span class="no">#${o.num}</span><span class="badge b-${o.dst}">${DST_LABEL[o.dst]||o.dst}</span></div>
+      ${o.address?`<div class="line"><svg viewBox="0 0 24 24"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="2.5"/></svg>${o.address}</div>`:''}
+      ${o.phone?`<div class="line"><svg viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3-8.6A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/></svg><a href="tel:${o.phone}">${o.phone}</a></div>`:''}
+      ${o.items.length?`<div class="line"><svg viewBox="0 0 24 24"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/></svg>${o.items.map(i=>i.name+' ×'+(i.qty||1)).join(', ')}</div>`:''}
+      <div class="sum">${o.total.toLocaleString('ru-RU')} ₸</div>
+      <div class="btns">
+        <button class="${o.dst==='on_way'?'go':''}" onclick="setStatus(${o.id},'on_way')">В пути</button>
+        <button class="done" onclick="setStatus(${o.id},'delivered')">Доставлен</button>
+      </div>
+    </div>`).join('');
+}
+async function setStatus(id,st){
+  let cour={}; try{ const v=await get(COUR_KEY); if(v&&typeof v==='object')cour=v; }catch(e){}
+  cour[id]=Object.assign({},cour[id],{courier:ME,delivery_status:st});
+  const ok=await put(COUR_KEY,cour);
+  toast(ok?('Статус: '+DST_LABEL[st]):'Нет связи — попробуй ещё раз');
+  loadOrders();
+}
+
+/* старт */
+fillNames();
+const saved=localStorage.getItem('yaya_courier_me');
+if(saved){ ME=saved; openApp(); }
+</script>
+</body>
+</html>

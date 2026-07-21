@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>YaYa Chicken · Админ</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Nunito:wght@400;600;700;800;900&display=swap');
+:root{
+  --bg:#0E0D0B; --panel:#17150F; --panel2:#1E1B14; --elev:#26221A;
+  --gold:#F4B400; --gold-d:#D99A00;
+  --text:#F5F2EA; --text2:#9E988B; --muted:#6E6A5E;
+  --border:rgba(255,255,255,.06); --border2:rgba(255,255,255,.12);
+  --green:#35C77E; --blue:#4C8DFF; --orange:#F58220; --red:#F0453A; --purple:#A855F7;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{background:#000;color:var(--text);font-family:Nunito,system-ui,sans-serif}
+body{display:flex;justify-content:center}
+.app{width:100%;max-width:480px;min-height:100vh;background:var(--bg);position:relative;padding-bottom:76px;overflow-x:hidden}
+a{color:inherit;text-decoration:none}
+button{font-family:inherit;cursor:pointer}
+input,select{font-family:inherit}
+::-webkit-scrollbar{display:none}
+
+.screen{display:none;animation:fade .22s ease}
+.screen.active{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+.hd{position:sticky;top:0;z-index:20;background:rgba(14,13,11,.9);backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--border);padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.hd .t{font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:.6px}
+.hd .acts{display:flex;align-items:center;gap:10px}
+.iconbtn{width:40px;height:40px;border-radius:11px;background:var(--panel2);border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center}
+.iconbtn svg{width:19px;height:19px;stroke:var(--text);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.brandrow{display:flex;align-items:center;gap:11px}
+.mark{width:42px;height:42px;border-radius:11px;flex:none;
+  background:radial-gradient(circle at 34% 28%,#FFD860,var(--gold) 55%,var(--gold-d));
+  display:flex;align-items:center;justify-content:center;font:900 12px Nunito;color:#3a2b00}
+.brandrow .nm{font-family:'Bebas Neue',sans-serif;font-size:19px;letter-spacing:.5px;line-height:1}
+.brandrow .sb{font-size:11px;color:var(--text2);font-weight:700}
+.bell{position:relative}
+.bell .dot{position:absolute;top:-5px;right:-5px;min-width:19px;height:19px;padding:0 5px;border-radius:10px;
+  background:var(--red);color:#fff;font:900 11px Nunito;display:flex;align-items:center;justify-content:center;border:2px solid var(--bg)}
+.bell .dot.hide{display:none}
+
+.branch{margin:14px 16px 4px;background:var(--panel2);border:1px solid var(--border);border-radius:13px;
+  padding:13px 15px;display:flex;align-items:center;justify-content:space-between;font-weight:800;font-size:14px}
+.branch svg{width:16px;height:16px;stroke:var(--text2);fill:none;stroke-width:2.5}
+
+.dayrow{display:flex;align-items:center;justify-content:space-between;padding:16px 16px 8px}
+.dayrow b{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:.8px}
+.dayrow span{font-size:13px;color:var(--text2);font-weight:700}
+
+.stats2{display:grid;grid-template-columns:1fr 1fr;gap:11px;padding:0 16px}
+.stat{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:15px;position:relative}
+.stat .ic{position:absolute;top:14px;right:14px;width:26px;height:26px;fill:none;stroke-width:1.8}
+.stat .big{font-family:'Bebas Neue',sans-serif;font-size:34px;line-height:1;margin:2px 0}
+.stat .lb{font-size:12px;color:var(--text2);font-weight:800}
+.stat .sm{font-size:11px;color:var(--muted);font-weight:700;margin-top:4px}
+.c-red .big{color:var(--red)} .c-red .ic{stroke:var(--red)}
+.c-gold .big{color:var(--gold)} .c-gold .ic{stroke:var(--gold)}
+.c-green .big{color:var(--green)} .c-green .ic{stroke:var(--green)}
+.c-blue .big{color:var(--blue)} .c-blue .ic{stroke:var(--blue)}
+
+.card{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:16px;margin:14px 16px}
+.card h3{font-family:'Bebas Neue',sans-serif;font-size:19px;letter-spacing:.5px}
+
+.sechd{display:flex;align-items:center;justify-content:space-between;padding:18px 16px 6px}
+.sechd b{font-family:'Bebas Neue',sans-serif;font-size:19px;letter-spacing:.5px}
+.sechd a{color:var(--gold);font-weight:800;font-size:13px}
+
+.ordc{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:14px;margin:0 16px 11px}
+.ordc.deliv-left{border-left:3px solid var(--gold)}
+.ordc .r1{display:flex;align-items:center;gap:8px;margin-bottom:9px}
+.ordc .no{font-weight:900;font-size:15px}
+.ordc .time{margin-left:auto;font-size:12px;color:var(--muted);font-weight:700}
+.badge{font-size:11px;font-weight:900;padding:3px 9px;border-radius:8px}
+.b-new{background:rgba(240,69,58,.16);color:var(--red)}
+.b-cook{background:rgba(244,180,0,.16);color:var(--gold)}
+.b-done{background:rgba(53,199,126,.16);color:var(--green)}
+.b-deliv{background:rgba(76,141,255,.16);color:var(--blue)}
+.b-cancel{background:rgba(158,152,139,.16);color:var(--text2)}
+.b-gray{background:rgba(158,152,139,.16);color:var(--text2)}
+.line{display:flex;align-items:flex-start;gap:8px;font-size:13px;color:var(--text2);font-weight:600;margin:5px 0}
+.line svg{width:15px;height:15px;stroke:var(--muted);fill:none;stroke-width:2;flex:none;margin-top:2px}
+.line b{color:var(--text);font-weight:700}
+.line a{color:var(--blue)}
+.ordc .foot{display:flex;align-items:center;justify-content:space-between;margin-top:11px;gap:10px}
+.ordc .sum{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:.5px}
+.btn-gold{background:var(--gold);color:#1a1400;border:none;border-radius:11px;padding:10px 18px;font-weight:900;font-size:14px}
+.btn-line{background:var(--panel2);border:1px solid var(--border2);color:var(--text);border-radius:11px;padding:10px 14px;font-weight:800;font-size:13px}
+.btn-danger{background:rgba(240,69,58,.12);border:1px solid rgba(240,69,58,.35);color:var(--red)}
+.btn-full{display:flex;align-items:center;justify-content:center;gap:8px;width:calc(100% - 32px);margin:6px 16px 4px;
+  background:var(--gold);color:#1a1400;border:none;border-radius:14px;padding:16px;font-weight:900;font-size:16px}
+.btn-full svg{width:20px;height:20px;stroke:#1a1400;fill:none;stroke-width:2.6}
+
+.items{border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:9px 0;margin:9px 0}
+.item{display:flex;justify-content:space-between;font-size:13px;font-weight:700;padding:3px 0}
+.item .q{color:var(--text2);font-weight:800;margin-right:8px}
+.item .pr{color:var(--text2);font-weight:800}
+
+.ctrl{margin-top:11px;display:flex;flex-direction:column;gap:8px}
+.ctrl select{width:100%;background:var(--panel2);border:1px solid var(--border2);color:var(--text);
+  border-radius:11px;padding:11px;font-weight:800;font-size:14px}
+.dstatus{display:flex;gap:6px}
+.dstatus button{flex:1;border:1px solid var(--border2);background:var(--panel2);color:var(--text2);
+  border-radius:9px;padding:9px 4px;font-size:11.5px;font-weight:800}
+.dstatus button.on{background:var(--gold);border-color:var(--gold);color:#1a1400}
+
+.tabs{display:flex;gap:8px;padding:12px 16px;overflow-x:auto;position:sticky;top:63px;z-index:15;
+  background:rgba(14,13,11,.92);backdrop-filter:blur(10px)}
+.tab{flex:none;padding:9px 14px;border-radius:11px;background:var(--panel2);border:1px solid var(--border);
+  color:var(--text2);font-weight:800;font-size:13px;display:flex;align-items:center;gap:6px}
+.tab .cnt{background:rgba(255,255,255,.12);border-radius:8px;padding:0 6px;font-size:11px;font-weight:900}
+.tab.active{background:var(--gold);border-color:var(--gold);color:#1a1400}
+.tab.active .cnt{background:rgba(0,0,0,.2)}
+
+.seg{display:flex;margin:12px 16px;background:var(--panel2);border:1px solid var(--border);border-radius:13px;padding:4px}
+.seg button{flex:1;padding:11px;border:none;background:transparent;color:var(--text2);font-weight:800;font-size:14px;border-radius:10px}
+.seg button.active{background:var(--gold);color:#1a1400}
+
+.cour{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:14px;margin:0 16px 11px;display:flex;gap:13px}
+.ava{width:52px;height:52px;border-radius:14px;flex:none;display:flex;align-items:center;justify-content:center;
+  font:900 19px Nunito;color:#1a1400;background:radial-gradient(circle at 35% 30%,#FFD860,var(--gold) 60%,var(--gold-d))}
+.cour .info{flex:1;min-width:0}
+.cour .cn{display:flex;align-items:center;gap:8px}
+.cour .cn b{font-size:16px;font-weight:900}
+.cour .cn .del{margin-left:auto;width:30px;height:30px;border-radius:9px;background:var(--panel2);border:1px solid var(--border);color:var(--muted);font-weight:900}
+.status{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:800;margin:4px 0}
+.status i{width:8px;height:8px;border-radius:50%}
+.s-busy i{background:var(--orange)} .s-busy{color:var(--orange)}
+.s-free i{background:var(--green)} .s-free{color:var(--green)}
+.cour .task{font-size:13px;color:var(--text2);font-weight:700;display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin:3px 0}
+.cour .stat-b{border-top:1px solid var(--border);margin-top:10px;padding-top:9px;display:flex;align-items:center;justify-content:space-between}
+.cour .stat-b .lbl{font-size:12px;color:var(--muted);font-weight:700}
+.cour .stat-b .v{font-weight:900;font-size:14px}
+.cour .stat-b .money{font-family:'Bebas Neue',sans-serif;font-size:19px;letter-spacing:.5px}
+.addbar{margin:0 16px 12px}
+.addbar button{width:100%;background:var(--panel2);border:1px dashed var(--border2);color:var(--gold);
+  border-radius:13px;padding:14px;font-weight:900;font-size:14px}
+
+.map{position:relative;height:360px;margin:0 16px 4px;border-radius:16px;overflow:hidden;border:1px solid var(--border);background:#141310}
+.map svg.roads{position:absolute;inset:0;width:100%;height:100%}
+.pin{position:absolute;transform:translate(-50%,-100%);display:flex;flex-direction:column;align-items:center}
+.pin .pa{width:36px;height:36px;border-radius:50%;border:3px solid;display:flex;align-items:center;justify-content:center;
+  font:900 13px Nunito;color:#1a1400;background:radial-gradient(circle at 35% 30%,#FFD860,var(--gold) 60%,var(--gold-d));box-shadow:0 4px 12px rgba(0,0,0,.5)}
+.pin .tip{width:0;height:0;border:6px solid transparent;border-top-color:currentColor;margin-top:-2px}
+.pin.busy{color:var(--orange)} .pin.free{color:var(--green)}
+.mapnote{margin:6px 16px 12px;font-size:12px;color:var(--muted);font-weight:700;text-align:center;line-height:1.4}
+#leafmap{height:380px;margin:0 16px 4px;border-radius:16px;overflow:hidden;border:1px solid var(--border);background:#141310}
+.leaflet-container{background:#141310;font-family:Nunito}
+.cmk{width:34px;height:34px;border-radius:50%;border:3px solid var(--green);display:flex;align-items:center;justify-content:center;
+  font:900 13px Nunito;color:#1a1400;background:radial-gradient(circle at 35% 30%,#FFD860,var(--gold) 60%,var(--gold-d));box-shadow:0 3px 10px rgba(0,0,0,.5)}
+.cmk.busy{border-color:var(--orange)}
+.rmk{width:38px;height:38px;border-radius:11px;border:2px solid #fff;display:flex;align-items:center;justify-content:center;
+  font:900 11px Nunito;color:#3a2b00;background:var(--gold);box-shadow:0 3px 10px rgba(0,0,0,.5)}
+.syncbar{position:fixed;bottom:84px;left:50%;transform:translateX(-50%);width:calc(100% - 32px);max-width:448px;z-index:45;
+  background:#2A261C;border:1px solid rgba(244,180,0,.4);color:var(--gold);
+  border-radius:12px;padding:10px 14px;font-size:13px;font-weight:800;display:none;align-items:center;gap:8px;box-shadow:0 6px 20px rgba(0,0,0,.5)}
+.syncbar.show{display:flex}
+.syncbar .spinner{width:15px;height:15px;border-width:2px;margin:0}
+
+.mtabs{display:flex;gap:8px;padding:12px 16px;overflow-x:auto;position:sticky;top:63px;z-index:15;
+  background:rgba(14,13,11,.92);backdrop-filter:blur(10px)}
+.mtab{flex:none;padding:8px 15px;border-radius:20px;background:var(--panel2);border:1px solid var(--border);
+  color:var(--text2);font-weight:800;font-size:13px}
+.mtab.active{background:var(--gold);border-color:var(--gold);color:#1a1400}
+.prod{display:flex;align-items:center;gap:13px;padding:13px 16px;border-bottom:1px solid var(--border)}
+.prod .ph{width:52px;height:52px;border-radius:13px;flex:none;background:var(--elev);
+  display:flex;align-items:center;justify-content:center;font-size:26px}
+.prod .pi{flex:1;min-width:0}
+.prod .pn{font-weight:800;font-size:15px}
+.prod .pp{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:.4px;margin:2px 0}
+.prod .av{font-size:12px;font-weight:800}
+.av.yes{color:var(--green)} .av.no{color:var(--red)}
+.sw{width:46px;height:27px;border-radius:20px;background:#38342b;position:relative;flex:none;transition:.2s;border:none}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:21px;height:21px;border-radius:50%;background:#fff;transition:.2s}
+.sw.on{background:var(--green)} .sw.on::after{left:22px}
+
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:11px;padding:16px}
+.tile{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:18px 8px;
+  display:flex;flex-direction:column;align-items:center;gap:9px;position:relative}
+.tile svg{width:26px;height:26px;stroke:var(--gold);fill:none;stroke-width:1.8}
+.tile span{font-size:12px;font-weight:800;text-align:center;line-height:1.2}
+.tile .nb{position:absolute;top:10px;right:12px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;
+  background:var(--red);color:#fff;font:900 10px Nunito;display:flex;align-items:center;justify-content:center}
+.shift{margin:6px 16px 16px;background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:16px}
+.shift .r{display:flex;align-items:center;gap:12px}
+.shift .nm{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:.4px}
+.shift .open{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:800;color:var(--green);margin-top:2px}
+.shift .open i{width:8px;height:8px;border-radius:50%;background:var(--green)}
+.shift .meta{font-size:13px;color:var(--text2);font-weight:700;margin-top:12px;line-height:1.6}
+.btn-red{width:100%;margin-top:12px;background:rgba(240,69,58,.14);border:1px solid rgba(240,69,58,.4);
+  color:var(--red);border-radius:13px;padding:14px;font-weight:900;font-size:15px}
+
+.bn{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;z-index:40;
+  background:rgba(18,16,12,.97);backdrop-filter:blur(14px);border-top:1px solid var(--border);
+  display:flex;justify-content:space-around;padding:8px 4px calc(8px + env(safe-area-inset-bottom))}
+.bn a{display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--text2);font-size:10px;font-weight:800;padding:5px 12px;border-radius:11px;position:relative}
+.bn a svg{width:23px;height:23px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.bn a.active{color:var(--gold)}
+.bn a .nb{position:absolute;top:0;right:8px;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:var(--red);color:#fff;font:900 9px Nunito;display:flex;align-items:center;justify-content:center}
+
+.empty{text-align:center;color:var(--muted);padding:50px 20px;font-weight:700}
+.loading{text-align:center;color:var(--text2);padding:40px 20px;font-weight:700}
+.spinner{width:26px;height:26px;border:3px solid var(--border2);border-top-color:var(--gold);border-radius:50%;
+  margin:0 auto 12px;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.offline{margin:10px 16px;background:rgba(240,69,58,.1);border:1px solid rgba(240,69,58,.35);color:var(--red);
+  border-radius:12px;padding:11px 14px;font-size:13px;font-weight:800;display:none}
+.offline.show{display:block}
+
+.toast{position:fixed;bottom:92px;left:50%;transform:translateX(-50%);z-index:60;background:#2A261C;
+  border:1px solid var(--border2);color:var(--text);padding:12px 18px;border-radius:12px;font-weight:800;font-size:14px;
+  opacity:0;pointer-events:none;transition:.25s;max-width:90%}
+.toast.show{opacity:1;bottom:100px}
+
+/* ── Экран входа ── */
+.gate{position:fixed;inset:0;z-index:100;background:var(--bg);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;padding:26px;gap:14px}
+.gate .mark{width:64px;height:64px;border-radius:18px;font-size:15px}
+.gate h2{font-family:'Bebas Neue',sans-serif;font-size:30px;letter-spacing:.6px}
+.gate p{color:var(--text2);font-size:13px;font-weight:700;text-align:center;margin-top:-6px}
+.gate input{width:100%;max-width:320px;background:var(--panel2);border:1px solid var(--border2);color:var(--text);
+  border-radius:13px;padding:15px;font-size:16px;font-weight:800;text-align:center}
+.gate button{width:100%;max-width:320px;background:var(--gold);color:#1a1400;border:none;border-radius:13px;
+  padding:15px;font-weight:900;font-size:16px}
+.gate .err{color:var(--red);font-size:13px;font-weight:800;height:16px}
+</style>
+</head>
+<body>
+<div class="app" id="app" style="display:none">
+
+  <!-- ГЛАВНАЯ -->
+  <section class="screen active" id="s-home">
+    <header class="hd">
+      <div class="brandrow">
+        <div class="mark">YaYa</div>
+        <div><div class="nm">YAYA CHICKEN</div><div class="sb">Панель администратора</div></div>
+      </div>
+      <div class="iconbtn bell">
+        <svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+        <span class="dot hide" id="bellDot">0</span>
+      </div>
+    </header>
+    <div class="offline" id="offline">Нет связи с сервером. Показаны последние данные. Проверяю снова…</div>
+    <div class="branch">Филиал: YaYa Chicken на Абая
+      <svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></div>
+    <div class="dayrow"><b>СЕГОДНЯ</b><span id="today">—</span></div>
+    <div class="stats2">
+      <div class="stat c-red"><svg class="ic" viewBox="0 0 24 24"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4zM3 6h18M16 10a4 4 0 0 1-8 0"/></svg>
+        <div class="big" id="stNew">–</div><div class="lb">Новые заказы</div><div class="sm">Требуют подтверждения</div></div>
+      <div class="stat c-gold"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+        <div class="big" id="stCook">–</div><div class="lb">Заказы в работе</div><div class="sm">Готовим сейчас</div></div>
+      <div class="stat c-green"><svg class="ic" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>
+        <div class="big" id="stReady">–</div><div class="lb">Готовы к выдаче</div><div class="sm">Ожидают курьера</div></div>
+      <div class="stat c-blue"><svg class="ic" viewBox="0 0 24 24"><circle cx="6" cy="18" r="3"/><circle cx="18" cy="18" r="3"/><path d="M9 18h6M15 18l-2-7h4l2 4M4 8h5l3 7"/></svg>
+        <div class="big" id="stCour">–</div><div class="lb">Курьеры заняты</div><div class="sm">Из общего числа</div></div>
+    </div>
+    <div class="card"><h3>Выручка за сегодня</h3>
+      <div style="font-family:'Bebas Neue';font-size:38px;color:var(--gold);letter-spacing:.5px;margin-top:4px" id="revToday">— ₸</div>
+      <div style="font-size:12px;color:var(--text2);font-weight:700" id="revCount">— заказов сегодня</div>
+    </div>
+    <div class="sechd"><b>Активные заказы</b><a href="#" onclick="go('orders');return false">Смотреть все</a></div>
+    <div id="homeOrders"><div class="loading"><div class="spinner"></div>Загружаю…</div></div>
+    <button class="btn-full" onclick="toast('Создание заказа вручную — добавим следующим шагом')">
+      <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg> Новый заказ</button>
+  </section>
+
+  <!-- ЗАКАЗЫ -->
+  <section class="screen" id="s-orders">
+    <header class="hd"><div class="t">Заказы</div>
+      <div class="acts"><div class="iconbtn" onclick="loadOrders(true)"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"/></svg></div></div>
+    </header>
+    <div class="tabs" id="orderTabs"></div>
+    <div id="orderList"><div class="loading"><div class="spinner"></div>Загружаю заказы…</div></div>
+  </section>
+
+  <!-- КУРЬЕРЫ -->
+  <section class="screen" id="s-couriers">
+    <header class="hd"><div class="t">Курьеры</div>
+      <div class="iconbtn" onclick="loadOrders(true)"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"/></svg></div>
+    </header>
+    <div class="seg"><button class="active" id="segList" onclick="courierView('list')">Список</button>
+      <button id="segMap" onclick="courierView('map')">Карта</button></div>
+    <div id="courierList"></div>
+    <div id="courierMap" style="display:none"></div>
+    <div class="addbar"><button onclick="addCourier()">+ Добавить курьера</button></div>
+  </section>
+
+  <!-- МЕНЮ -->
+  <section class="screen" id="s-menu">
+    <header class="hd"><div class="t">Меню</div></header>
+    <div class="mtabs" id="menuTabs"></div>
+    <div id="menuList"><div class="loading"><div class="spinner"></div>Загружаю меню…</div></div>
+  </section>
+
+  <!-- ЕЩЁ -->
+  <section class="screen" id="s-more">
+    <header class="hd"><div class="t">Ещё</div></header>
+    <div class="grid3" id="moreGrid"></div>
+    <div class="shift">
+      <div class="r"><div class="mark">YaYa</div>
+        <div><div class="nm">YaYa Chicken на Абая</div><div class="open"><i></i>Смена открыта</div></div></div>
+      <div class="meta">Администратор: <b style="color:var(--text)">Артём</b><br>Смена началась в 08:00</div>
+      <button class="btn-red" onclick="if(confirm('Закрыть смену?'))toast('Смена закрыта')">Закрыть смену</button>
+    </div>
+  </section>
+
+  <div class="syncbar" id="syncbar"><div class="spinner"></div>Сохраняю изменения…</div>
+  <nav class="bn" id="botnav"></nav>
+</div>
+
+<!-- ВХОД -->
+<div class="gate" id="gate">
+  <div class="mark">YaYa</div>
+  <h2>YAYA · АДМИН</h2>
+  <p>Панель управления заведением</p>
+  <input id="pw" type="password" placeholder="Пароль" onkeydown="if(event.key==='Enter')tryLogin()">
+  <div class="err" id="pwErr"></div>
+  <button onclick="tryLogin()">Войти</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ═════════ НАСТРОЙКИ ═════════ */
+const API = 'https://yaya-db-production.up.railway.app';
+const ADMIN_PASSWORD = 'yaya2024';          // ← смени на свой
+const MENU_URLS = ['content.json','../content.json'];  // где искать меню
+// Координаты заведения (Экибастуз). Поправь точно под свой адрес при желании:
+const RESTAURANT = {lat:51.7294, lng:75.3220, name:'YaYa Chicken на Абая'};
+// Ключ в базе, куда приложение курьера пишет позиции: {"Артём":{lat,lng,ts}, ...}
+const COURIER_POS_KEY = 'yaya_courier_pos';
+
+/* ═════════ Статусы (как на сервере) ═════════ */
+const KST_LABEL={new:'Новый',cook:'Готовится',done:'Готово',cancel:'Отменён'};
+const DST_LABEL={pending:'Ожидает',assigned:'Назначен',on_way:'В пути',delivered:'Доставлен'};
+const DST_SEQ=['pending','assigned','on_way','delivered'];
+const fmtNum=n=>(Number(n)||0).toLocaleString('ru-RU');
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function fmtTime(ts){ if(!ts)return''; const d=new Date(Number(ts)); return d.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}); }
+function isToday(ts){ if(!ts)return false; const d=new Date(Number(ts)),n=new Date(); return d.toDateString()===n.toDateString(); }
+
+/* ═════════ Тост ═════════ */
+let toastT;
+function toast(m){ const t=document.getElementById('toast'); t.textContent=m; t.classList.add('show');
+  clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),2600); }
+
+/* ═════════ Вход ═════════ */
+function tryLogin(){
+  const v=document.getElementById('pw').value;
+  if(v===ADMIN_PASSWORD){ sessionStorage.setItem('yaya_admin','1'); openApp(); }
+  else document.getElementById('pwErr').textContent='Неверный пароль';
+}
+function openApp(){
+  document.getElementById('gate').style.display='none';
+  document.getElementById('app').style.display='';
+  startAll();
+}
+if(sessionStorage.getItem('yaya_admin')==='1') openApp();
+
+/* ═════════ Навигация ═════════ */
+const TABS=[
+  ['home','Главная','<path d="M3 11l9-8 9 8v9a2 2 0 0 1-2 2h-4v-6H9v6H5a2 2 0 0 1-2-2z"/>'],
+  ['orders','Заказы','<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/>'],
+  ['couriers','Курьеры','<circle cx="6" cy="18" r="3"/><circle cx="18" cy="18" r="3"/><path d="M9 18h6M15 18l-2-7h4l2 4M4 8h5l3 7"/>'],
+  ['menu','Меню','<path d="M6 3v18M6 8h4M18 3v7a3 3 0 0 1-3 3V3M18 13v8"/>'],
+  ['more','Ещё','<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>']
+];
+document.getElementById('botnav').innerHTML=TABS.map(([id,l,ic])=>
+  `<a href="#" data-id="${id}" onclick="go('${id}');return false"><svg viewBox="0 0 24 24">${ic}</svg>${l}${id==='orders'?'<span class="nb hide" id="navNew" style="display:none"></span>':''}</a>`).join('');
+function go(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('s-'+id).classList.add('active');
+  document.querySelectorAll('.bn a').forEach(a=>a.classList.toggle('active',a.dataset.id===id));
+  window.scrollTo(0,0);
+  if(id==='menu' && !menuLoaded) loadMenu();
+}
+
+/* ═════════ ДАННЫЕ ═════════ */
+let ORDERS=[], COURIERS=[], STOCK={}, menuLoaded=false, MENU=[];
+let pending={};           // несохранённые изменения статуса кухни: id -> {status}
+let ORDER_COUR={};        // назначения курьеров/доставки: id -> {courier, delivery_status} (хранится в /kv)
+let leaflet=null, courierMarkers=[];
+
+/* fetch с таймаутом — чтобы запрос не висел вечно на плохой связи */
+function fetchT(url,opts,ms){
+  ms=ms||9000;
+  const c=new AbortController();
+  const t=setTimeout(()=>c.abort(),ms);
+  return fetch(url,Object.assign({signal:c.signal},opts)).finally(()=>clearTimeout(t));
+}
+
+async function api(path,opts){
+  const r=await fetchT(API+path,Object.assign({cache:'no-store'},opts));
+  if(!r.ok) throw new Error('HTTP '+r.status);
+  return r.json();
+}
+
+/* ── Заказы + курьеры ── */
+let pollTimer;
+async function startAll(){
+  document.getElementById('today').textContent=new Date().toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'});
+  await loadCouriers();
+  await loadOrders();
+  if(pollTimer) clearInterval(pollTimer);
+  pollTimer=setInterval(()=>loadOrders(),8000);
+}
+
+async function loadOrders(manual){
+  if(manual) toast('Обновляю…');
+  try{
+    const j=await api('/orders?limit=100');
+    ORDERS=Array.isArray(j.orders)?j.orders:[];
+    overlayCour();                        // курьер/доставка — из надёжного /kv
+    applyPending();                       // не даём опросу затирать несохранённый статус кухни
+    document.getElementById('offline').classList.remove('show');
+    renderStats(); renderHomeOrders(); renderOrders(); renderCouriers();
+    flushPending();                       // фоном дожимаем статусы кухни
+    mergeCouriers();                      // самозаполнение списка курьеров
+  }catch(e){
+    document.getElementById('offline').classList.add('show');
+  }
+}
+
+/* Накладываем назначения курьеров (из /kv) поверх заказов с сервера */
+function overlayCour(){
+  ORDERS.forEach(o=>{
+    const c=ORDER_COUR[o.id];
+    if(!c) return;
+    if(c.courier!==undefined) o.courier=c.courier;
+    if(c.delivery_status!==undefined) o.delivery_status=c.delivery_status;
+  });
+}
+
+/* Накладываем локальные несохранённые изменения поверх свежих данных с сервера */
+function applyPending(){
+  ORDERS.forEach(o=>{
+    const p=pending[o.id];
+    if(!p) return;
+    if('status' in p) o.status=p.status;
+    if('courier' in p) o.courier=p.courier;
+    if('delivery_status' in p) o.delivery_status=p.delivery_status;
+  });
+}
+
+/* POST с повторами — на случай прыгающей мобильной связи */
+async function tryPost(path,body){
+  for(let i=0;i<3;i++){
+    try{
+      const r=await fetchT(API+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+      if(r.ok) return true;
+    }catch(e){}
+    await new Promise(res=>setTimeout(res,1200));
+  }
+  return false;
+}
+
+/* Дожимаем несохранённое (вызывается на каждом опросе) */
+let flushing=false;
+async function flushPending(){
+  if(flushing) return; flushing=true;
+  for(const id of Object.keys(pending)){
+    const p=pending[id];
+    if('status' in p){
+      const ok=await tryPost('/orders/'+id+'/status',{status:p.status});
+      if(ok) delete pending[id];
+    } else delete pending[id];
+  }
+  if(courDirty) await saveCour();      // до-сохраняем назначения курьеров
+  flushing=false; updateSync();
+}
+
+/* Индикатор «есть несохранённое» */
+let courDirty=false, saveInFlight=0;
+function updateSync(){
+  const bar=document.getElementById('syncbar');
+  if(bar) bar.classList.toggle('show', saveInFlight>0 || Object.keys(pending).length>0 || courDirty);
+}
+/* Сохранение назначений курьеров в /kv (надёжный путь) */
+async function saveCour(){
+  saveInFlight++; updateSync();
+  const ok=await tryPut('/kv/yaya_order_couriers',ORDER_COUR);
+  saveInFlight=Math.max(0,saveInFlight-1);
+  courDirty=!ok;
+  updateSync();
+  return ok;
+}
+
+async function loadCouriers(){
+  try{ const j=await api('/kv/yaya_couriers'); COURIERS=Array.isArray(j.value)?j.value:[]; }
+  catch(e){ COURIERS=[]; }
+  try{ const s=await api('/kv/yaya_stock'); STOCK=(s.value&&typeof s.value==='object')?s.value:{}; }catch(e){ STOCK={}; }
+  try{ const c=await api('/kv/yaya_order_couriers'); ORDER_COUR=(c.value&&typeof c.value==='object')?c.value:{}; }catch(e){ ORDER_COUR={}; }
+}
+/* PUT в /kv с повторами (это хранилище на сервере работает надёжно) */
+async function tryPut(path,body){
+  for(let i=0;i<3;i++){
+    try{ const r=await fetchT(API+path,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}); if(r.ok) return true; }catch(e){}
+    await new Promise(res=>setTimeout(res,1000));
+  }
+  return false;
+}
+async function saveCouriers(){ try{ await fetchT(API+'/kv/yaya_couriers',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(COURIERS)});}catch(e){toast('Не сохранилось — нет связи');} }
+async function saveStock(){ try{ await fetchT(API+'/kv/yaya_stock',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(STOCK)});}catch(e){toast('Не сохранилось — нет связи');} }
+
+/* ═════════ Разбор заказа ═════════ */
+function parseOrder(o){
+  const d=o.data||{};
+  const address=(d.address&&String(d.address).trim())||'';
+  const isDelivery=!!address;
+  const total=(Number(d.total)||0)+(Number(d.delivery)||0);
+  const items=Array.isArray(d.items)?d.items:[];
+  const phone=d.recipient_phone||d.pay_phone||d.phone||'';
+  const name=d.recipient_name||d.name||d.pay_name||'Клиент';
+  return {id:o.id,num:o.num||o.id,kst:o.status||'new',dst:o.delivery_status||'pending',
+    courier:o.courier||'',ts:o.ts,address,isDelivery,total,items,phone,name,comment:d.comment||'',pay:d.pay_method||''};
+}
+
+/* ═════════ Статистика ═════════ */
+function renderStats(){
+  const P=ORDERS.map(parseOrder);
+  const nNew=P.filter(o=>o.kst==='new').length;
+  const nCook=P.filter(o=>o.kst==='cook').length;
+  const nReady=P.filter(o=>o.kst==='done'&&o.dst!=='delivered').length;
+  const busyCour=new Set(P.filter(o=>o.courier&&o.dst!=='delivered').map(o=>o.courier));
+  document.getElementById('stNew').textContent=nNew;
+  document.getElementById('stCook').textContent=nCook;
+  document.getElementById('stReady').textContent=nReady;
+  document.getElementById('stCour').textContent=busyCour.size+' / '+COURIERS.length;
+  const todayP=P.filter(o=>isToday(o.ts)&&o.kst!=='cancel');
+  const rev=todayP.reduce((s,o)=>s+o.total,0);
+  document.getElementById('revToday').textContent=fmtNum(rev)+' ₸';
+  document.getElementById('revCount').textContent=todayP.length+' заказов сегодня';
+  const dot=document.getElementById('bellDot');
+  if(nNew>0){ dot.textContent=nNew; dot.classList.remove('hide'); } else dot.classList.add('hide');
+  const nn=document.getElementById('navNew');
+  if(nn){ if(nNew>0){nn.textContent=nNew;nn.style.display='';}else nn.style.display='none'; }
+}
+
+/* ═════════ Карточка заказа ═════════ */
+function ordCard(o,compact){
+  const kb={new:'b-new',cook:'b-cook',done:'b-done',cancel:'b-cancel'}[o.kst]||'b-gray';
+  let items='';
+  if(!compact&&o.items.length) items=`<div class="items">${o.items.map(i=>
+    `<div class="item"><span><span class="q">${i.qty||1}x</span>${esc(i.name)}</span></div>`).join('')}</div>`;
+  const phone=o.phone?`<div class="line"><svg viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3-8.6A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/></svg><a href="tel:${esc(o.phone)}">${esc(o.phone)}</a></div>`:'';
+  const addr=o.isDelivery
+    ?`<div class="line"><svg viewBox="0 0 24 24"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="2.5"/></svg>${esc(o.address)}</div>`
+    :`<div class="line"><svg viewBox="0 0 24 24"><path d="M4 7h16v13H4zM8 7V5a4 4 0 0 1 8 0v2"/></svg>Самовывоз</div>`;
+  const comment=(!compact&&o.comment)?`<div class="line"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>${esc(o.comment)}</div>`:'';
+
+  let ctrl='';
+  if(!compact){
+    if(o.kst==='cancel'){
+      ctrl=`<div class="foot"><span class="sum">${fmtNum(o.total)} ₸</span><span class="badge b-gray">Отменён</span></div>`;
+    } else if(o.dst==='delivered'){
+      ctrl=`<div class="foot"><span class="sum">${fmtNum(o.total)} ₸</span>
+        <span class="badge b-done">✓ Доставлен${o.courier?' · '+esc(o.courier):''}</span></div>`;
+    } else if(o.kst==='new'){
+      ctrl=`<div class="foot"><span class="sum">${fmtNum(o.total)} ₸</span>
+        <div style="display:flex;gap:8px"><button class="btn-line btn-danger" onclick="setKitchen(${o.id},'cancel')">Отклонить</button>
+        <button class="btn-gold" onclick="setKitchen(${o.id},'cook')">Принять</button></div></div>`;
+    } else {
+      // Готовится (cook) или Готов (done): можно назначать курьера уже сейчас
+      const cookBtn = o.kst==='cook' ? `<button class="btn-gold" onclick="setKitchen(${o.id},'done')">Готов</button>` : '';
+      if(o.isDelivery){
+        const names=courierOptions(o.courier);
+        const sel=`<select onchange="assignCourier(${o.id},this.value)">
+          <option value="">— курьер не назначен —</option>
+          ${names.map(c=>`<option ${c===o.courier?'selected':''}>${esc(c)}</option>`).join('')}</select>`;
+        const dbtns=DST_SEQ.map(s=>`<button class="${s===o.dst?'on':''}" onclick="setDStatus(${o.id},'${s}')">${DST_LABEL[s]}</button>`).join('');
+        const hint = o.kst==='cook' ? `<div style="font-size:12px;color:var(--text2);font-weight:700;margin-bottom:2px">Назначь курьера сейчас — он увидит заказ ещё на готовке и построит маршрут заранее</div>` : '';
+        ctrl=`<div class="foot"><span class="sum">${fmtNum(o.total)} ₸</span>${cookBtn}</div>
+          <div class="ctrl">${hint}${sel}<div class="dstatus">${dbtns}</div></div>`;
+      } else {
+        ctrl=`<div class="foot"><span class="sum">${fmtNum(o.total)} ₸</span>
+          ${cookBtn||'<span class="badge b-done">Готов к выдаче (самовывоз)</span>'}</div>`;
+      }
+    }
+  } else {
+    ctrl=`<div class="foot"><span class="sum">${fmtNum(o.total)} ₸</span>
+      <button class="btn-gold" onclick="go('orders')">Открыть</button></div>`;
+  }
+  const courierBadge=o.courier?`<span class="badge b-deliv">🛵 ${esc(o.courier)}</span>`:'';
+  return `<div class="ordc ${o.isDelivery?'deliv-left':''}">
+    <div class="r1"><span class="no">#${o.num}</span>
+      <span class="badge ${kb}">${KST_LABEL[o.kst]||o.kst}</span>${courierBadge}
+      <span class="time">${fmtTime(o.ts)}</span></div>
+    <div class="line"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg><b>${esc(o.name)}</b></div>
+    ${phone}${addr}${comment}${items}${ctrl}</div>`;
+}
+
+/* ═════════ Экран Заказы ═════════ */
+const OTABS=[['new','Новые'],['cook','Готовятся'],['ready','Готовы'],['deliv','Доставка'],['done','Завершённые']];
+let curTab='new';
+function tabMatch(o,tab){
+  if(tab==='new')  return o.kst==='new';
+  if(tab==='cook') return o.kst==='cook';
+  if(tab==='ready')return o.kst==='done'&&(o.dst==='pending'||o.dst==='assigned');
+  if(tab==='deliv')return o.dst==='on_way';
+  if(tab==='done') return o.dst==='delivered'||o.kst==='cancel';
+}
+function renderTabs(){
+  const P=ORDERS.map(parseOrder);
+  document.getElementById('orderTabs').innerHTML=OTABS.map(([k,l])=>{
+    const c=P.filter(o=>tabMatch(o,k)).length;
+    return `<button class="tab ${k===curTab?'active':''}" data-k="${k}" onclick="filterOrders('${k}')">${l}<span class="cnt">${c}</span></button>`;
+  }).join('');
+}
+function filterOrders(k){ curTab=k; renderTabs(); renderOrders(); }
+function renderOrders(){
+  renderTabs();
+  const P=ORDERS.map(parseOrder).filter(o=>tabMatch(o,curTab)).sort((a,b)=>b.ts-a.ts);
+  document.getElementById('orderList').innerHTML=P.length
+    ? P.map(o=>ordCard(o,false)).join('')
+    : `<div class="empty">В этом статусе заказов нет</div>`;
+}
+function renderHomeOrders(){
+  const P=ORDERS.map(parseOrder).filter(o=>o.kst!=='cancel'&&o.dst!=='delivered').sort((a,b)=>b.ts-a.ts).slice(0,4);
+  document.getElementById('homeOrders').innerHTML=P.length
+    ? P.map(o=>ordCard(o,true)).join('')
+    : `<div class="empty">Активных заказов нет</div>`;
+}
+
+/* ═════════ Действия с заказом (надёжные) ═════════
+   Изменение сразу применяется локально и кладётся в очередь `pending`.
+   Пока сервер не подтвердил — опрос его НЕ затирает, а очередь дожимается
+   с повторами. Поэтому назначенный курьер больше не «сбрасывается». */
+async function setKitchen(id,status){
+  const o=ORDERS.find(x=>x.id==id); if(o) o.status=status;
+  (pending[id]=pending[id]||{}).status=status; updateSync();
+  renderStats();renderHomeOrders();renderOrders();
+  const ok=await tryPost('/orders/'+id+'/status',{status});
+  if(ok){ clearPending(id,['status']);
+    toast(status==='cook'?'Заказ принят':status==='done'?'Заказ готов':status==='cancel'?'Заказ отклонён':'Сохранено'); }
+  else toast('Нет связи — сохраню автоматически, когда появится');
+  updateSync();
+}
+async function assignCourier(id,name){
+  const o=ORDERS.find(x=>x.id==id); let dst;
+  if(o){ o.courier=name; if(name&&(!o.delivery_status||o.delivery_status==='pending'))o.delivery_status='assigned'; if(!name)o.delivery_status='pending'; dst=o.delivery_status; }
+  ORDER_COUR[id]=Object.assign({},ORDER_COUR[id],{courier:name||'',delivery_status:dst});
+  renderOrders();renderCouriers();renderStats();
+  const ok=await saveCour();
+  toast(ok?(name?'Курьер назначен: '+name:'Курьер снят'):'Нет связи — сохраню автоматически');
+}
+async function setDStatus(id,st){
+  const o=ORDERS.find(x=>x.id==id); if(o) o.delivery_status=st;
+  ORDER_COUR[id]=Object.assign({},ORDER_COUR[id],{delivery_status:st});
+  if(o) ORDER_COUR[id].courier=o.courier||ORDER_COUR[id].courier||'';
+  renderOrders();renderStats();renderCouriers();
+  const ok=await saveCour();
+  toast(ok?('Доставка: '+DST_LABEL[st]):'Нет связи — сохраню автоматически');
+}
+function clearPending(id,keys){
+  const p=pending[id]; if(!p) return;
+  keys.forEach(k=>delete p[k]);
+  if(!Object.keys(p).length) delete pending[id];
+}
+
+/* ═════════ Курьеры ═════════ */
+/* Все известные курьеры: мастер-список + назначенные + текущий (для выпадашки) */
+function courierOptions(current){
+  const set=new Set(COURIERS);
+  Object.values(ORDER_COUR).forEach(c=>{ if(c&&c.courier) set.add(c.courier); });
+  if(current) set.add(current);
+  return Array.from(set).filter(Boolean);
+}
+/* Самозаполнение мастер-списка: назначенные + вышедшие на линию курьеры */
+let merging=false;
+async function mergeCouriers(){
+  if(merging) return; merging=true;
+  let changed=false;
+  Object.values(ORDER_COUR).forEach(c=>{ if(c&&c.courier&&!COURIERS.includes(c.courier)){ COURIERS.push(c.courier); changed=true; } });
+  try{ const j=await api('/kv/yaya_couriers'); if(Array.isArray(j.value)){ j.value.forEach(n=>{ if(n&&!COURIERS.includes(n)){ COURIERS.push(n); changed=true; } }); } }catch(e){}
+  if(changed){ saveCouriers(); renderCouriers(); }
+  merging=false;
+}
+
+function renderCouriers(){
+  const P=ORDERS.map(parseOrder);
+  const box=document.getElementById('courierList');
+  if(!COURIERS.length){ box.innerHTML=`<div class="empty">Курьеров пока нет.<br>Нажми «Добавить курьера».</div>`; return; }
+  const cards=COURIERS.map((name,i)=>{
+    const active=P.find(o=>o.courier===name&&o.dst!=='delivered'&&o.kst!=='cancel');
+    const doneToday=P.filter(o=>o.courier===name&&o.dst==='delivered'&&isToday(o.ts));
+    const sumToday=doneToday.reduce((s,o)=>s+o.total,0);
+    const busy=!!active;
+    const task=active?`<div class="task">Заказ #${active.num} <span class="badge b-deliv">${DST_LABEL[active.dst]}</span></div>`
+      :`<div class="task">Свободен</div>`;
+    return `<div class="cour"><div class="ava">${esc(name[0]||'?').toUpperCase()}</div>
+      <div class="info"><div class="cn"><b>${esc(name)}</b>
+        <button class="del" onclick="delCourier(${i})">✕</button></div>
+        <div class="status s-${busy?'busy':'free'}"><i></i>${busy?'Занят':'Свободен'}</div>
+        ${task}
+        <div class="stat-b"><span class="lbl">Сегодня доставлено</span>
+          <span class="v">${doneToday.length} зак.</span><span class="money">${fmtNum(sumToday)} ₸</span></div>
+      </div></div>`;
+  }).join('');
+  box.innerHTML=cards;
+  if(leaflet) refreshCourierMarkers();
+}
+async function addCourier(){
+  const n=prompt('Имя курьера:'); if(!n||!n.trim())return;
+  COURIERS.push(n.trim()); await saveCouriers(); renderCouriers(); renderOrders(); renderStats(); toast('Курьер добавлен');
+}
+async function delCourier(i){
+  if(!confirm('Удалить курьера «'+COURIERS[i]+'»?'))return;
+  COURIERS.splice(i,1); await saveCouriers(); renderCouriers(); renderOrders(); renderStats();
+}
+function courierView(v){
+  const list=v==='list';
+  document.getElementById('courierList').style.display=list?'':'none';
+  document.getElementById('courierMap').style.display=list?'none':'';
+  document.getElementById('segList').classList.toggle('active',list);
+  document.getElementById('segMap').classList.toggle('active',!list);
+  if(!list) initMap();
+}
+
+/* Реальная карта (Leaflet + OpenStreetMap) */
+function initMap(){
+  document.getElementById('courierMap').innerHTML=
+    `<div id="leafmap"></div>
+     <div class="mapnote" id="mapNote">Курьеры появятся на карте, как только их приложение начнёт передавать GPS-координаты в базу (ключ <b>${COURIER_POS_KEY}</b>).</div>`;
+  if(typeof L==='undefined'){ document.getElementById('mapNote').textContent='Карта не загрузилась — проверь интернет.'; return; }
+  if(leaflet){ leaflet.remove(); leaflet=null; courierMarkers=[]; }
+  leaflet=L.map('leafmap',{zoomControl:true,attributionControl:false}).setView([RESTAURANT.lat,RESTAURANT.lng],13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(leaflet);
+  // заведение
+  L.marker([RESTAURANT.lat,RESTAURANT.lng],{icon:L.divIcon({className:'',html:'<div class="rmk">YaYa</div>',iconSize:[38,38],iconAnchor:[19,19]})})
+    .addTo(leaflet).bindPopup(RESTAURANT.name);
+  setTimeout(()=>leaflet.invalidateSize(),120);
+  refreshCourierMarkers();
+}
+
+async function refreshCourierMarkers(){
+  if(!leaflet) return;
+  let pos={};
+  try{ const j=await api('/kv/'+COURIER_POS_KEY); pos=(j.value&&typeof j.value==='object')?j.value:{}; }catch(e){}
+  courierMarkers.forEach(m=>leaflet.removeLayer(m)); courierMarkers=[];
+  const P=ORDERS.map(parseOrder); let any=false;
+  COURIERS.forEach(name=>{
+    const p=pos[name];
+    if(p&&typeof p.lat==='number'&&typeof p.lng==='number'){
+      any=true;
+      const busy=P.some(o=>o.courier===name&&o.dst!=='delivered');
+      const icon=L.divIcon({className:'',html:`<div class="cmk ${busy?'busy':''}">${esc((name[0]||'?')).toUpperCase()}</div>`,iconSize:[34,34],iconAnchor:[17,17]});
+      const m=L.marker([p.lat,p.lng],{icon}).addTo(leaflet).bindPopup(`<b>${esc(name)}</b><br>${busy?'В доставке':'Свободен'}`);
+      courierMarkers.push(m);
+    }
+  });
+  const note=document.getElementById('mapNote'); if(note) note.style.display=any?'none':'';
+}
+
+/* ═════════ Меню ═════════ */
+async function loadMenu(){
+  menuLoaded=true;
+  let data=null;
+  for(const u of MENU_URLS){
+    try{ const r=await fetch(u,{cache:'no-store'}); if(r.ok){ data=await r.json(); break; } }catch(e){}
+  }
+  if(data&&Array.isArray(data.menu)) MENU=data.menu;
+  else { MENU=DEMO_MENU; }   // если content.json не найден — демо
+  renderMenuTabs(); renderMenu('__all');
+}
+const DEMO_MENU=[
+  {name:'Бургеры',emoji:'🍔',items:[{name:'Бургер YaYa',price:2290}]},
+  {name:'Шаурма',emoji:'🌯',items:[{name:'Шаурма XL',price:2190}]},
+  {name:'Комбо',emoji:'🍟',items:[{name:'Комбо Big YaYa',price:3590}]},
+  {name:'Закуски',emoji:'🍗',items:[{name:'Крылышки острые (6 шт.)',price:1890},{name:'Стрипсы (6 шт.)',price:1690},{name:'Картофель фри',price:790}]},
+];
+let curCat='__all';
+function renderMenuTabs(){
+  const cats=['__all'].concat(MENU.map(c=>c.name));
+  document.getElementById('menuTabs').innerHTML=cats.map(c=>
+    `<button class="mtab ${c===curCat?'active':''}" onclick="renderMenu('${c==='__all'?'__all':esc(c).replace(/'/g,"\\'")}')">${c==='__all'?'Все':esc(c)}</button>`).join('');
+}
+function stockKey(cat,it){ return (it.id||it.name||'')+'@'+(cat.name||''); }
+function renderMenu(cat){
+  curCat=cat; renderMenuTabs();
+  let rows='';
+  MENU.forEach(c=>{
+    if(cat!=='__all'&&c.name!==cat)return;
+    (c.items||[]).forEach(it=>{
+      const key=stockKey(c,it);
+      const av = STOCK[key]!==false;   // по умолчанию в наличии
+      rows+=`<div class="prod"><div class="ph">${esc(c.emoji||'🍽️')}</div>
+        <div class="pi"><div class="pn">${esc(it.name)}</div>
+          <div class="pp">${it.price!=null?fmtNum(it.price)+' ₸':''}</div>
+          <div class="av ${av?'yes':'no'}">${av?'В наличии':'Нет в наличии'}</div></div>
+        <button class="sw ${av?'on':''}" onclick="toggleStock('${esc(key).replace(/'/g,"\\'")}',this)"></button></div>`;
+    });
+  });
+  document.getElementById('menuList').innerHTML=rows||`<div class="empty">В категории пусто</div>`;
+}
+async function toggleStock(key,btn){
+  const on=!btn.classList.contains('on');
+  btn.classList.toggle('on',on);
+  const t=btn.parentElement.querySelector('.av');
+  t.textContent=on?'В наличии':'Нет в наличии'; t.className='av '+(on?'yes':'no');
+  STOCK[key]=on; await saveStock();
+}
+
+/* ═════════ Ещё ═════════ */
+const MORE=[
+  ['Отзывы','<path d="M21 15a2 2 0 0 1-2 2H8l-4 4V5a2 2 0 0 1 2-2h13a2 2 0 0 1 2 2z"/>'],
+  ['Push-уведомления','<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0"/>'],
+  ['Баннеры','<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.5"/><path d="m4 17 5-4 4 3 3-2 4 3"/>'],
+  ['YaYa TV','<rect x="2" y="5" width="20" height="14" rx="2"/><path d="m10 9 5 3-5 3z"/>'],
+  ['YaYa Radio','<circle cx="12" cy="12" r="2.2"/><path d="M7.8 7.8a6 6 0 0 0 0 8.4M16.2 16.2a6 6 0 0 0 0-8.4M4.9 4.9a10 10 0 0 0 0 14.2M19.1 19.1a10 10 0 0 0 0-14.2"/>'],
+  ['Акции','<path d="M9 3H4v5M15 3h5v5M9 21H4v-5M15 21h5v-5"/><circle cx="12" cy="12" r="3.5"/>'],
+  ['Инвентарь','<path d="M21 8 12 3 3 8l9 5 9-5zM3 8v8l9 5 9-5V8"/>'],
+  ['Настройки','<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>'],
+  ['Поддержка','<path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/>'],
+];
+document.getElementById('moreGrid').innerHTML=MORE.map(([l,ic])=>
+  `<a class="tile" href="#" onclick="toast('«${l}» — добавим следующим шагом');return false"><svg viewBox="0 0 24 24">${ic}</svg><span>${l}</span></a>`).join('');
+</script>
+</body>
+</html>
