@@ -444,7 +444,7 @@ button:disabled{opacity:.45}
       <div class="hint">Поздравление звучит поверх радио в назначенное время: волна приглушается, играет запись, потом музыка возвращается. Слышат все, у кого в этот момент включено радио.</div>
       <button class="addwide" onclick="openGreet(-1)">+ Добавить поздравление</button>
       <div id="rdGreetList"></div>
-      <button class="savebar" onclick="saveRadio()">Сохранить и опубликовать</button>
+      <button class="savebar" onclick="saveGreetings()">Сохранить и опубликовать</button>
     </div>
 
     <div id="rdSecReq" style="display:none">
@@ -1489,6 +1489,9 @@ async function loadRadio(){
     if(j.value&&typeof j.value==='object') RADIO=Object.assign(RADIO,j.value);
   }catch(e){}
   if(!Array.isArray(RADIO.greetings)) RADIO.greetings=[];
+  /* Старые записи в .amr/.3gp/.m4a переводим на mp3-отдачу — иначе
+     браузер их не проигрывает и в эфире получается тишина.        */
+  RADIO.greetings.forEach(function(g){ if(g&&g.audio) g.audio=audioDeliverable(g.audio); });
   try{
     const j=await api('/kv/'+GREET_REQ_KEY);
     if(Array.isArray(j.value)) GREQ=j.value;
@@ -1519,6 +1522,11 @@ function atLabel(at){
   return d[2]+'.'+d[1]+' в '+p[1].slice(0,5);
 }
 function isPast(at){ return at && at < nowLocal(); }
+/* 'YYYY-MM-DDTHH:MM' → миллисекунды по местному времени */
+function atMs(at){
+  const m=String(at||'').match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/);
+  return m?new Date(+m[1],+m[2]-1,+m[3],+m[4],+m[5]).getTime():NaN;
+}
 function nowLocal(){
   const d=new Date(), z=n=>String(n).padStart(2,'0');
   return d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate())+'T'+z(d.getHours())+':'+z(d.getMinutes());
@@ -1533,7 +1541,7 @@ function renderGreet(){
     <div class="grow ${g.off?'off':''} ${isPast(g.at)?'past':''}">
       <div class="gt">${esc(g.name||'Поздравление')}</div>
       <div class="gd">${atLabel(g.at)}${isPast(g.at)?' · уже прошло':''}</div>
-      ${g.audio?`<audio class="gplay" controls preload="none" src="${esc(g.audio)}"></audio>`:'<div class="gs">запись не прикреплена</div>'}
+      ${g.audio?`<audio class="gplay" controls preload="metadata" src="${esc(g.audio)}" onerror="this.insertAdjacentHTML('afterend','<div class=\\'gs\\' style=\\'color:#ff8f6a\\'>запись не открывается — перезалейте её</div>');this.remove()"></audio>`:'<div class="gs">запись не прикреплена</div>'}
       <div class="vops">
         <button class="act" onclick="openGreet(${i})">Изменить</button>
         <button onclick="greetOff(${i})">${g.off?'Включить':'Отключить'}</button>
@@ -1550,13 +1558,40 @@ function greetDel(i){
 }
 
 /* ── Окно поздравления ── */
-let grIdx=-1, grFile=null;
+let grIdx=-1, grFile=null, grReq=-1, grProbe=null;
+
+/* Диктофон телефона часто пишет в .amr/.3gp/.opus — браузеры такое не
+   играют, и в эфире выходила тишина. Просим хранилище отдавать mp3. */
+function audioDeliverable(url){
+  if(!url||!/res\.cloudinary\.com/i.test(url)) return url||'';
+  if(/\/upload\/[^/]*f_mp3/.test(url)) return url;
+  return url.replace('/upload/','/upload/f_mp3/')
+            .replace(/\.(amr|3gp|3gpp|m4a|aac|ogg|oga|opus|wav|caf|wma|webm|mp4|awb)(\?.*)?$/i,'.mp3$2');
+}
+/* Сразу после выбора говорим, читается ли запись этим браузером */
+function grCheckFile(f){
+  const note=document.getElementById('grNote');
+  try{ if(grProbe){ URL.revokeObjectURL(grProbe); } }catch(e){}
+  grProbe=URL.createObjectURL(f);
+  const a=new Audio();
+  const done=(txt,err)=>{ note.textContent=txt; note.classList.add('on'); note.classList.toggle('err',!!err); };
+  a.onloadedmetadata=function(){
+    const d=a.duration;
+    if(!isFinite(d)||d<=0) done('Длительность не читается — при загрузке переведём запись в mp3',false);
+    else if(d<1) done('Запись короче секунды — проверьте, что диктофон записал голос',true);
+    else done('Запись читается · '+Math.round(d)+' сек',false);
+  };
+  a.onerror=function(){ done('Этот формат браузер не играет — при загрузке переведём в mp3',false); };
+  a.src=grProbe;
+}
 function onGrPick(e){
   const f=(e.target.files||[])[0]; if(!f) return;
   if(f.size>60*1024*1024){ toast('Файл больше 60 МБ — запишите короче'); e.target.value=''; return; }
+  if(f.size<2000){ toast('Файл почти пустой — похоже, диктофон ничего не записал'); }
   grFile=f;
   document.getElementById('grSrc').value='';
   document.getElementById('grFileName').textContent=f.name+' · '+(f.size/1048576).toFixed(1)+' МБ';
+  grCheckFile(f);
 }
 function grProgress(p){
   const bar=document.getElementById('grProg'), note=document.getElementById('grNote');
@@ -1573,7 +1608,7 @@ function grSay(text,isErr){
   toast(text);
 }
 function openGreet(i,pre){
-  grIdx=i; grFile=null;
+  grIdx=i; grFile=null; grReq=-1;
   const g=i>=0?RADIO.greetings[i]:(pre||{});
   document.getElementById('grTitle').textContent=i>=0?'Изменить поздравление':'Новое поздравление';
   document.getElementById('grFile').value='';
@@ -1594,8 +1629,13 @@ async function saveGreet(){
   const at=document.getElementById('grAt').value;
   if(!at){ grSay('Укажите дату и время выхода в эфир',true); return; }
   if(!grFile&&!src){ grSay('Выберите запись или вставьте ссылку',true); return; }
+  /* Витрина берёт поздравление в течение 15 минут после времени выхода.
+     Более старое время просто никогда не сработает — предупреждаем. */
+  if(atMs(at) < Date.now()-15*60*1000){
+    grSay('Это время уже прошло — витрина его не возьмёт. Поставьте ближайшее время',true); return;
+  }
   const g={name:document.getElementById('grName').value.trim(), at:at,
-           audio:src, off:false, id:(RADIO.greetings[grIdx]&&RADIO.greetings[grIdx].id)||('g'+Date.now())};
+           audio:src, off:false, id:(grIdx>=0&&RADIO.greetings[grIdx]&&RADIO.greetings[grIdx].id)||('g'+Date.now())};
   btn.disabled=true;
   try{
     if(grFile){
@@ -1607,20 +1647,46 @@ async function saveGreet(){
           grSay('Сначала подключите хранилище — это делается один раз',true); return; }
         g.audio=await uploadCloud(grFile,grProgress,'auto');
       }
+      g.audio=audioDeliverable(g.audio);
     }
+    if(!g.audio){ grSay('Запись не загрузилась — попробуйте ещё раз',true); return; }
     if(grIdx>=0){ g.off=!!RADIO.greetings[grIdx].off; RADIO.greetings[grIdx]=g; }
     else RADIO.greetings.push(g);
     renderGreet();
     btn.textContent='Сохраняю…';
-    const ok=await tryPut('/kv/'+RADIO_KEY,RADIO);
+    const ok=await putRadioChecked();
+    if(ok&&grReq>=0&&GREQ[grReq]){        /* заявку закрываем только после успеха */
+      GREQ[grReq].status='done';
+      await tryPut('/kv/'+GREET_REQ_KEY,GREQ); renderReq();
+    }
+    grReq=-1;
     closeGreet();
-    toast(ok?'Поздравление в расписании':'Добавлено, но не сохранилось — нажмите «Сохранить и опубликовать»');
+    toast(ok?'Поздравление в расписании — витрина увидит его за полминуты'
+            :'Не сохранилось на сервере — нажмите «Сохранить и опубликовать»');
   }catch(e){
     grSay('Не получилось: '+(e.message||e),true);
     if(e.cfg){ cfgPending=true; openCfg(); }
   }finally{
     btn.disabled=false; btn.textContent=grIdx>=0?'Сохранить':'Добавить';
   }
+}
+/* Пишем расписание и тут же перечитываем: если запись не доехала до
+   базы, витрина о ней не узнает, а кабинет раньше рапортовал «готово». */
+async function putRadioChecked(){
+  const ok=await tryPut('/kv/'+RADIO_KEY,RADIO);
+  if(!ok) return false;
+  try{
+    const j=await api('/kv/'+RADIO_KEY);
+    const list=(j.value&&Array.isArray(j.value.greetings))?j.value.greetings:[];
+    return RADIO.greetings.every(function(g){ return list.some(function(x){ return x&&x.id===g.id; }); });
+  }catch(e){ return true; }
+}
+/* Кнопка «Сохранить и опубликовать» в разделе поздравлений: раньше она
+   вызывала saveRadio() и молча отказывала, если поле ссылки на волну
+   было пустым или непонятным — поздравления при этом не сохранялись. */
+async function saveGreetings(){
+  const ok=await putRadioChecked();
+  toast(ok?'Расписание опубликовано':'Не сохранилось — проверьте связь и повторите');
 }
 
 /* ── Заявки от покупателей ── */
@@ -1647,8 +1713,7 @@ function renderReq(){
 function reqToAir(i){
   const r=GREQ[i]||{};
   openGreet(-1,{name:(r.to||'')+(r.from?' — от '+r.from:''), at:r.when||''});
-  GREQ[i].status='done';
-  tryPut('/kv/'+GREET_REQ_KEY,GREQ).then(renderReq);
+  grReq=i;                     /* статус «в эфире» поставим после сохранения */
 }
 function reqDel(i){
   ask('Удалить заявку?',(GREQ[i]&&GREQ[i].to)||'','Удалить',async function(){
