@@ -296,6 +296,16 @@ input,select{font-family:inherit}
 .cfgbox.ok{background:rgba(53,199,126,.08);border-color:rgba(53,199,126,.3)}
 .cfgbox.ok b{color:var(--green)}
 button:disabled{opacity:.45}
+.segdot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--red);margin-left:5px;vertical-align:2px}
+.grow{padding:13px 16px;border-bottom:1px solid var(--border)}
+.grow.off{opacity:.45}
+.grow .gt{font-weight:900;font-size:15px}
+.grow .gd{font-size:12.5px;color:var(--gold);font-weight:800;margin-top:3px}
+.grow .gs{font-size:11.5px;color:var(--muted);font-weight:700;margin-top:3px;word-break:break-all}
+.grow .gplay{display:block;width:100%;margin-top:9px;height:34px}
+.grow.past .gd{color:var(--muted)}
+.grow .gmsg{font-size:13px;color:var(--text2);font-weight:700;margin-top:6px;line-height:1.45;
+  background:var(--panel2);border-radius:10px;padding:10px 12px}
 .modal .sheet .hint{margin:0 16px 14px}
 </style>
 </head>
@@ -402,26 +412,81 @@ button:disabled{opacity:.45}
       <div class="t">YaYa Radio</div>
       <div class="acts"><button class="btn-line" onclick="go('more')">Назад</button></div>
     </header>
-    <div class="hint">Радио — это кнопка в шапке витрины. Покупатель нажимает её и слышит вашу волну. Подойдёт любой YouTube-ролик или прямой эфир: вставьте ссылку, остальное подставится само.</div>
-    <div class="rpreview">
-      <span class="eq"><i></i><i></i><i></i></span>
-      <span class="rt"><b>РАДИО</b><i id="rdPreview">YaYa</i></span>
+    <div class="seg" id="rdSeg">
+      <button class="active" onclick="rdSec('wave',this)">Волна</button>
+      <button onclick="rdSec('greet',this)">Поздравления</button>
+      <button onclick="rdSec('req',this)">Заявки<span class="segdot" id="rdReqDot" style="display:none"></span></button>
     </div>
-    <div class="fld">
-      <label>Ссылка на YouTube или ID ролика</label>
-      <input id="rdUrl" placeholder="https://youtu.be/2Hz-3imnsWc" oninput="rdChanged()">
+
+    <div id="rdSecWave">
+      <div class="hint">Радио — это кнопка в шапке витрины. Покупатель нажимает её и слышит вашу волну. Подойдёт любой YouTube-ролик или прямой эфир: вставьте ссылку, остальное подставится само.</div>
+      <div class="rpreview">
+        <span class="eq"><i></i><i></i><i></i></span>
+        <span class="rt"><b>РАДИО</b><i id="rdPreview">YaYa</i></span>
+      </div>
+      <div class="fld">
+        <label>Ссылка на YouTube или ID ролика</label>
+        <input id="rdUrl" placeholder="https://youtu.be/2Hz-3imnsWc" oninput="rdChanged()">
+      </div>
+      <div class="fld">
+        <label>Название волны (видно на кнопке)</label>
+        <input id="rdTitle" placeholder="YaYa" maxlength="14" oninput="rdChanged()">
+      </div>
+      <div class="prod" style="border-top:1px solid var(--border)">
+        <div class="pi"><div class="pn">Радио включено</div>
+          <div class="pp" style="font-size:12px;font-family:Nunito;color:var(--text2);font-weight:700;letter-spacing:0">Выключите — кнопка исчезнет с витрины</div></div>
+        <button class="sw on" id="rdSw" onclick="rdToggle(this)"></button>
+      </div>
+      <button class="savebar" onclick="saveRadio()">Сохранить и опубликовать</button>
     </div>
-    <div class="fld">
-      <label>Название волны (видно на кнопке)</label>
-      <input id="rdTitle" placeholder="YaYa" maxlength="14" oninput="rdChanged()">
+
+    <div id="rdSecGreet" style="display:none">
+      <div class="hint">Поздравление звучит поверх радио в назначенное время: волна приглушается, играет запись, потом музыка возвращается. Слышат все, у кого в этот момент включено радио.</div>
+      <button class="addwide" onclick="openGreet(-1)">+ Добавить поздравление</button>
+      <div id="rdGreetList"></div>
+      <button class="savebar" onclick="saveRadio()">Сохранить и опубликовать</button>
     </div>
-    <div class="prod" style="border-top:1px solid var(--border)">
-      <div class="pi"><div class="pn">Радио включено</div>
-        <div class="pp" style="font-size:12px;font-family:Nunito;color:var(--text2);font-weight:700;letter-spacing:0">Выключите — кнопка исчезнет с витрины</div></div>
-      <button class="sw on" id="rdSw" onclick="rdToggle(this)"></button>
+
+    <div id="rdSecReq" style="display:none">
+      <div class="hint">Здесь появляются заявки от покупателей. Запишите поздравление голосом на диктофон телефона, потом нажмите «Поставить в эфир» — файл подставится в расписание.</div>
+      <div id="rdReqList"></div>
     </div>
-    <button class="savebar" onclick="saveRadio()">Сохранить и опубликовать</button>
   </section>
+
+  <!-- ПОЗДРАВЛЕНИЕ -->
+  <div class="modal" id="grModal" onclick="if(event.target===this)closeGreet()">
+    <div class="sheet">
+      <div class="mt" id="grTitle">Новое поздравление</div>
+      <div class="fld">
+        <label>Запись с телефона</label>
+        <input type="file" id="grFile" accept="audio/*,video/*" style="display:none" onchange="onGrPick(event)">
+        <button class="pickbtn" onclick="document.getElementById('grFile').click()">
+          <svg viewBox="0 0 24 24"><path d="M12 3v10.5"/><circle cx="12" cy="16.5" r="3"/><path d="M9 6h6"/></svg>
+          Выбрать запись</button>
+        <div class="pickname" id="grFileName"></div>
+        <div class="uprog" id="grProg"><i></i></div>
+        <div class="upnote" id="grNote"></div>
+      </div>
+      <div class="ordiv">или</div>
+      <div class="fld">
+        <label>Ссылка на аудиофайл</label>
+        <input id="grSrc" placeholder="https://…/pozdravlenie.mp3" autocapitalize="off" spellcheck="false">
+      </div>
+      <div class="fld">
+        <label>Для кого (видно только вам)</label>
+        <input id="grName" maxlength="60" placeholder="Айгуль, 30 лет">
+      </div>
+      <div class="fld">
+        <label>Когда выйдет в эфир</label>
+        <input id="grAt" type="datetime-local">
+      </div>
+      <div class="mrow">
+        <button class="no" onclick="closeGreet()">Отмена</button>
+        <button class="ok" id="grSave" onclick="saveGreet()">Добавить</button>
+      </div>
+    </div>
+  </div>
+
 
   <!-- МОДАЛКА РОЛИКА -->
   <div class="modal" id="vidModal" onclick="if(event.target===this)closeVid()">
@@ -574,8 +639,10 @@ if(sessionStorage.getItem('yaya_admin')==='1') openApp();
 const TABS=[
   ['home','Главная','<path d="M3 11l9-8 9 8v9a2 2 0 0 1-2 2h-4v-6H9v6H5a2 2 0 0 1-2-2z"/>'],
   ['orders','Заказы','<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/>'],
-  ['couriers','Курьеры','<circle cx="6" cy="18" r="3"/><circle cx="18" cy="18" r="3"/><path d="M9 18h6M15 18l-2-7h4l2 4M4 8h5l3 7"/>'],
-  ['menu','Меню','<path d="M6 3v18M6 8h4M18 3v7a3 3 0 0 1-3 3V3M18 13v8"/>'],
+  /* курьер — самокат доставки, читается лучше силуэта человека */
+  ['couriers','Курьеры','<circle cx="6" cy="17.5" r="2.8"/><circle cx="18" cy="17.5" r="2.8"/><path d="M6 17.5h7l3.4-9H19"/><path d="M13 8.5h4"/><path d="M18 17.5 16.4 8.5"/>'],
+  /* меню — бургер, однозначно про еду */
+  ['menu','Меню','<path d="M4 9.5a8 8 0 0 1 16 0z"/><path d="M4 13h16"/><path d="M4 16.5h16a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3z"/>'],
   ['more','Ещё','<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>']
 ];
 document.getElementById('botnav').innerHTML=TABS.map(([id,l,ic])=>
@@ -1244,11 +1311,11 @@ function uploadOwn(file,onProg){
     xhr.send(fd);
   });
 }
-function uploadCloud(file,onProg){
+function uploadCloud(file,onProg,kind){
   return new Promise((resolve,reject)=>{
     const fd=new FormData(); fd.append('file',file); fd.append('upload_preset',MEDIA_PRESET);
     const xhr=new XMLHttpRequest();
-    xhr.open('POST','https://api.cloudinary.com/v1_1/'+MEDIA_CLOUD+'/video/upload');
+    xhr.open('POST','https://api.cloudinary.com/v1_1/'+MEDIA_CLOUD+'/'+(kind||'video')+'/upload');
     xhr.timeout=300000;
     xhr.upload.onprogress=e=>{ if(e.lengthComputable&&onProg) onProg(e.loaded/e.total); };
     xhr.onload=()=>{
@@ -1412,30 +1479,190 @@ async function saveTV(){
 }
 
 /* ═════════ YaYa Radio ═════════ */
-let RADIO={videoId:'2Hz-3imnsWc',title:'YaYa',off:false}, rdLoaded=false;
+const GREET_REQ_KEY='yaya_greet_req';
+let RADIO={videoId:'2Hz-3imnsWc',title:'YaYa',off:false,greetings:[]}, rdLoaded=false, GREQ=[];
+
 async function loadRadio(){
   rdLoaded=true;
   try{
     const j=await api('/kv/'+RADIO_KEY);
     if(j.value&&typeof j.value==='object') RADIO=Object.assign(RADIO,j.value);
   }catch(e){}
+  if(!Array.isArray(RADIO.greetings)) RADIO.greetings=[];
+  try{
+    const j=await api('/kv/'+GREET_REQ_KEY);
+    if(Array.isArray(j.value)) GREQ=j.value;
+  }catch(e){}
   document.getElementById('rdUrl').value=RADIO.videoId||'';
   document.getElementById('rdTitle').value=RADIO.title||'YaYa';
   document.getElementById('rdSw').classList.toggle('on',!RADIO.off);
-  rdChanged();
+  rdChanged(); renderGreet(); renderReq();
+}
+function rdSec(sec,btn){
+  document.querySelectorAll('#rdSeg button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('rdSecWave').style.display =sec==='wave' ?'':'none';
+  document.getElementById('rdSecGreet').style.display=sec==='greet'?'':'none';
+  document.getElementById('rdSecReq').style.display  =sec==='req'  ?'':'none';
 }
 function rdChanged(){
   const t=document.getElementById('rdTitle').value.trim()||'YaYa';
   document.getElementById('rdPreview').textContent=t;
 }
 function rdToggle(btn){ btn.classList.toggle('on'); }
+
+/* Время храним как есть, без часовых поясов: админ и гости в одном городе */
+function atLabel(at){
+  if(!at) return 'время не задано';
+  const p=String(at).split('T'); if(p.length<2) return at;
+  const d=p[0].split('-');
+  return d[2]+'.'+d[1]+' в '+p[1].slice(0,5);
+}
+function isPast(at){ return at && at < nowLocal(); }
+function nowLocal(){
+  const d=new Date(), z=n=>String(n).padStart(2,'0');
+  return d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate())+'T'+z(d.getHours())+':'+z(d.getMinutes());
+}
+
+function renderGreet(){
+  const box=document.getElementById('rdGreetList');
+  const list=(RADIO.greetings||[]).slice().sort((a,b)=>String(a.at).localeCompare(String(b.at)));
+  RADIO.greetings=list;
+  if(!list.length){ box.innerHTML='<div class="empty">Пока ничего не запланировано.</div>'; return; }
+  box.innerHTML=list.map((g,i)=>`
+    <div class="grow ${g.off?'off':''} ${isPast(g.at)?'past':''}">
+      <div class="gt">${esc(g.name||'Поздравление')}</div>
+      <div class="gd">${atLabel(g.at)}${isPast(g.at)?' · уже прошло':''}</div>
+      ${g.audio?`<audio class="gplay" controls preload="none" src="${esc(g.audio)}"></audio>`:'<div class="gs">запись не прикреплена</div>'}
+      <div class="vops">
+        <button class="act" onclick="openGreet(${i})">Изменить</button>
+        <button onclick="greetOff(${i})">${g.off?'Включить':'Отключить'}</button>
+        <button class="dng" onclick="greetDel(${i})">Удалить</button>
+      </div>
+    </div>`).join('');
+}
+function greetOff(i){ RADIO.greetings[i].off=!RADIO.greetings[i].off; renderGreet(); toast('Не забудьте сохранить'); }
+function greetDel(i){
+  const g=RADIO.greetings[i]||{};
+  ask('Удалить поздравление?',(g.name||'Без подписи')+' — уберём из расписания.','Удалить',function(){
+    RADIO.greetings.splice(i,1); renderGreet(); toast('Удалено — нажмите «Сохранить и опубликовать»');
+  });
+}
+
+/* ── Окно поздравления ── */
+let grIdx=-1, grFile=null;
+function onGrPick(e){
+  const f=(e.target.files||[])[0]; if(!f) return;
+  if(f.size>60*1024*1024){ toast('Файл больше 60 МБ — запишите короче'); e.target.value=''; return; }
+  grFile=f;
+  document.getElementById('grSrc').value='';
+  document.getElementById('grFileName').textContent=f.name+' · '+(f.size/1048576).toFixed(1)+' МБ';
+}
+function grProgress(p){
+  const bar=document.getElementById('grProg'), note=document.getElementById('grNote');
+  note.classList.remove('err');
+  if(p<0){ bar.classList.remove('on'); note.classList.remove('on'); return; }
+  bar.classList.add('on'); note.classList.add('on');
+  bar.querySelector('i').style.width=Math.round(p*100)+'%';
+  note.textContent='Загрузка '+Math.round(p*100)+'%';
+}
+function grSay(text,isErr){
+  const note=document.getElementById('grNote');
+  document.getElementById('grProg').classList.remove('on');
+  note.textContent=text; note.classList.add('on'); note.classList.toggle('err',!!isErr);
+  toast(text);
+}
+function openGreet(i,pre){
+  grIdx=i; grFile=null;
+  const g=i>=0?RADIO.greetings[i]:(pre||{});
+  document.getElementById('grTitle').textContent=i>=0?'Изменить поздравление':'Новое поздравление';
+  document.getElementById('grFile').value='';
+  document.getElementById('grFileName').textContent='';
+  document.getElementById('grSrc').value=g.audio||'';
+  document.getElementById('grName').value=g.name||'';
+  document.getElementById('grAt').value=g.at||'';
+  grProgress(-1);
+  const b=document.getElementById('grSave');
+  b.disabled=false; b.textContent=i>=0?'Сохранить':'Добавить';
+  document.getElementById('grModal').classList.add('open');
+}
+function closeGreet(){ document.getElementById('grModal').classList.remove('open'); }
+
+async function saveGreet(){
+  const btn=document.getElementById('grSave');
+  const src=document.getElementById('grSrc').value.trim();
+  const at=document.getElementById('grAt').value;
+  if(!at){ grSay('Укажите дату и время выхода в эфир',true); return; }
+  if(!grFile&&!src){ grSay('Выберите запись или вставьте ссылку',true); return; }
+  const g={name:document.getElementById('grName').value.trim(), at:at,
+           audio:src, off:false, id:(RADIO.greetings[grIdx]&&RADIO.greetings[grIdx].id)||('g'+Date.now())};
+  btn.disabled=true;
+  try{
+    if(grFile){
+      btn.textContent='Загружаю…';
+      try{ g.audio=await uploadOwn(grFile,grProgress); }
+      catch(e1){
+        if(!e1.absent) throw e1;
+        if(!cloudReady()){ grProgress(-1); cfgPending=true; openCfg();
+          grSay('Сначала подключите хранилище — это делается один раз',true); return; }
+        g.audio=await uploadCloud(grFile,grProgress,'auto');
+      }
+    }
+    if(grIdx>=0){ g.off=!!RADIO.greetings[grIdx].off; RADIO.greetings[grIdx]=g; }
+    else RADIO.greetings.push(g);
+    renderGreet();
+    btn.textContent='Сохраняю…';
+    const ok=await tryPut('/kv/'+RADIO_KEY,RADIO);
+    closeGreet();
+    toast(ok?'Поздравление в расписании':'Добавлено, но не сохранилось — нажмите «Сохранить и опубликовать»');
+  }catch(e){
+    grSay('Не получилось: '+(e.message||e),true);
+    if(e.cfg){ cfgPending=true; openCfg(); }
+  }finally{
+    btn.disabled=false; btn.textContent=grIdx>=0?'Сохранить':'Добавить';
+  }
+}
+
+/* ── Заявки от покупателей ── */
+function renderReq(){
+  const box=document.getElementById('rdReqList');
+  const dot=document.getElementById('rdReqDot');
+  const news=GREQ.filter(r=>r.status!=='done').length;
+  dot.style.display=news?'':'none';
+  if(!GREQ.length){ box.innerHTML='<div class="empty">Заявок пока нет.</div>'; return; }
+  box.innerHTML=GREQ.slice().reverse().map(r=>{
+    const i=GREQ.indexOf(r);
+    return `<div class="grow ${r.status==='done'?'off':''}">
+      <div class="gt">${esc(r.to||'Без имени')}</div>
+      <div class="gd">${r.when?atLabel(r.when):'время на ваш выбор'}${r.status==='done'?' · в эфире':''}</div>
+      <div class="gs">от ${esc(r.from||'—')}${r.phone?' · '+esc(r.phone):''}</div>
+      ${r.text?`<div class="gmsg">${esc(r.text)}</div>`:''}
+      <div class="vops">
+        ${r.phone?`<a class="act" style="background:var(--panel2);border:1px solid var(--border2);border-radius:9px;padding:7px 10px;font-weight:800;font-size:11.5px;color:var(--gold)" href="tel:${esc(r.phone)}">Позвонить</a>`:''}
+        <button class="act" onclick="reqToAir(${i})">Поставить в эфир</button>
+        <button class="dng" onclick="reqDel(${i})">Удалить</button>
+      </div></div>`;
+  }).join('');
+}
+function reqToAir(i){
+  const r=GREQ[i]||{};
+  openGreet(-1,{name:(r.to||'')+(r.from?' — от '+r.from:''), at:r.when||''});
+  GREQ[i].status='done';
+  tryPut('/kv/'+GREET_REQ_KEY,GREQ).then(renderReq);
+}
+function reqDel(i){
+  ask('Удалить заявку?',(GREQ[i]&&GREQ[i].to)||'','Удалить',async function(){
+    GREQ.splice(i,1); await tryPut('/kv/'+GREET_REQ_KEY,GREQ); renderReq();
+  });
+}
+
 async function saveRadio(){
   const raw=document.getElementById('rdUrl').value.trim();
   const id=ytId(raw);
   if(!id){ toast('Не разобрал ссылку — нужен YouTube-ролик или его ID'); return; }
-  RADIO={videoId:id,
-         title:document.getElementById('rdTitle').value.trim()||'YaYa',
-         off:!document.getElementById('rdSw').classList.contains('on')};
+  RADIO.videoId=id;
+  RADIO.title=document.getElementById('rdTitle').value.trim()||'YaYa';
+  RADIO.off=!document.getElementById('rdSw').classList.contains('on');
   document.getElementById('rdUrl').value=id;
   saveInFlight++; updateSync();
   const ok=await tryPut('/kv/'+RADIO_KEY,RADIO);
