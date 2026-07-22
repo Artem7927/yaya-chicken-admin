@@ -452,7 +452,19 @@ button:disabled{opacity:.45}
       </div>
       <div class="fld">
         <label>Кнопка на ролике</label>
+        <select id="vidMode" onchange="vidModeChanged()">
+          <option value="none">Без кнопки</option>
+          <option value="item">В корзину — конкретный товар</option>
+          <option value="cat">Заказать — открыть категорию меню</option>
+        </select>
+      </div>
+      <div class="fld" id="vidCatWrap" style="display:none">
+        <label>Какая категория</label>
         <select id="vidCat"></select>
+      </div>
+      <div class="fld" id="vidItemWrap" style="display:none">
+        <label>Какой товар</label>
+        <select id="vidItem"></select>
       </div>
       <div class="mrow">
         <button class="no" onclick="closeVid()">Отмена</button>
@@ -1030,13 +1042,30 @@ document.getElementById('moreGrid').innerHTML=MORE.map(([l,ic])=>{
    Элемент: {v:'YT_ID'} либо {mp4:'https://…/clip.mp4', poster:'…'}
             + caption, cat, off                                     */
 const TV_KEY='yaya_tv', RADIO_KEY='yaya_radio';
-const TV_CATS=[
-  ['','Без кнопки'],['','— или в меню —'],
+/* Запасной список категорий — если content.json не прочитался */
+const TV_CATS_FALLBACK=[
   ['sets','Сеты'],['wings','Крылышки'],['snacks','Закуски'],['burgers','Бургеры'],
   ['doners','Шаурма'],['pizza','Пицца'],['bliny','Блины'],['drinks','Напитки'],
   ['coffee','Кофе'],['cocktails','Коктейли'],['mohito','Мохито'],
   ['lemonade','Лимонады'],['sauces','Соусы']
 ];
+/* Категории витрины: id должен совпадать с якорем sec-<id> */
+function tvCats(){
+  if(Array.isArray(MENU)&&MENU.length&&MENU[0].items)
+    return MENU.map(c=>[c.id||c.slug||c.name,c.name]);
+  return TV_CATS_FALLBACK;
+}
+/* Плоский список товаров для кнопки «В корзину» */
+function tvItems(){
+  const out=[];
+  (MENU||[]).forEach(c=>{
+    (c.items||[]).forEach(it=>{
+      out.push({key:(it.id||it.name)+'@'+(c.name||''), id:it.id||'', name:it.name,
+                price:it.price, cat:c.id||c.slug||c.name, catName:c.name});
+    });
+  });
+  return out;
+}
 let TV={every:4,videos:[],ads:[]}, tvLoaded=false, tvDirty=false, tvCurSec='feed';
 
 /* Из любой ссылки достаём ID ролика YouTube */
@@ -1048,10 +1077,18 @@ function ytId(s){
   return m?m[1]:'';
 }
 function isMp4(s){ return /^https?:\/\/.+\.(mp4|webm|mov)(\?.*)?$/i.test(String(s||'').trim()); }
-function catName(id){ const f=TV_CATS.find(c=>c[0]===id&&c[1]!=='Без кнопки'&&c[1][0]!=='—'); return f?f[1]:''; }
+function catName(id){ const f=tvCats().find(c=>c[0]===id); return f?f[1]:''; }
+/* Что написать под роликом про его кнопку */
+function ctaLabel(it){
+  const c=it.cta||(it.cat?{type:'cat',cat:it.cat}:null);
+  if(!c||c.type==='none') return '';
+  if(c.type==='item') return 'в корзину: '+(c.name||'товар');
+  return 'в категорию: '+(catName(c.cat)||c.cat);
+}
 
 async function loadTV(){
   tvLoaded=true;
+  if(!menuLoaded) await loadMenu();   /* товары нужны для кнопки «В корзину» */
   try{
     const j=await api('/kv/'+TV_KEY);
     const v=j.value;
@@ -1084,12 +1121,12 @@ function renderTV(){
     const el=document.getElementById(box);
     if(!list.length){ el.innerHTML=`<div class="empty">${empty}</div>`; return; }
     el.innerHTML=list.map((it,i)=>{
-      const th=tvThumb(it), cn=catName(it.cat);
+      const th=tvThumb(it), cn=ctaLabel(it);
       return `<div class="vrow ${it.off?'off':''}">
         <div class="vthumb" style="${th?`background-image:url('${esc(th)}')`:''}">${key==='ads'?'<div class="adtag">РЕКЛАМА</div>':''}</div>
         <div class="vinfo">
           <div class="vc">${esc(it.caption||'Без подписи')}</div>
-          <div class="vm">${it.v?('YouTube · '+esc(it.v)):esc(it.mp4||'')}${cn?' · кнопка: '+esc(cn):''}</div>
+          <div class="vm">${it.v?('YouTube · '+esc(it.v)):esc(it.mp4||'')}${cn?' · '+esc(cn):''}</div>
           <div class="vops">
             <button onclick="tvMove('${key}',${i},-1)" ${i===0?'disabled style=opacity:.35':''}>↑</button>
             <button onclick="tvMove('${key}',${i},1)" ${i===list.length-1?'disabled style=opacity:.35':''}>↓</button>
@@ -1234,6 +1271,25 @@ function uploadCloud(file,onProg){
   });
 }
 
+/* Переключение режима кнопки: показываем только нужный список */
+function vidModeChanged(){
+  const m=document.getElementById('vidMode').value;
+  document.getElementById('vidCatWrap').style.display =m==='cat' ?'':'none';
+  document.getElementById('vidItemWrap').style.display=m==='item'?'':'none';
+}
+/* Собираем настройку кнопки из полей окна */
+function vidReadCta(){
+  const m=document.getElementById('vidMode').value;
+  if(m==='cat') return {type:'cat',cat:document.getElementById('vidCat').value};
+  if(m==='item'){
+    const key=document.getElementById('vidItem').value;
+    const p=tvItems().find(x=>x.key===key);
+    if(!p) return {type:'none'};
+    return {type:'item',key:p.key,id:p.id,name:p.name,price:p.price,cat:p.cat};
+  }
+  return {type:'none'};
+}
+
 /* ── Модалка ролика ── */
 let vidIdx=-1, vidKind='feed', vidFile=null;
 function onVidPick(e){
@@ -1279,8 +1335,15 @@ function openVid(i,kind){
   document.getElementById('vidPosterWrap').style.display=kind==='ads'?'':'none';
   document.getElementById('vidPoster').value=it.poster||'';
   document.getElementById('vidCap').value=it.caption||'';
-  document.getElementById('vidCat').innerHTML=TV_CATS.map(([v,l],n)=>
-    `<option value="${v}" ${n===1?'disabled':''} ${(it.cat||'')===v&&n!==1?'selected':''}>${l}</option>`).join('');
+  const cta=it.cta||(it.cat?{type:'cat',cat:it.cat}:{type:'none'});
+  document.getElementById('vidCat').innerHTML=tvCats().map(([v,l])=>
+    `<option value="${esc(v)}" ${cta.cat===v?'selected':''}>${esc(l)}</option>`).join('');
+  const items=tvItems();
+  document.getElementById('vidItem').innerHTML=items.length
+    ? items.map(p=>`<option value="${esc(p.key)}" ${cta.type==='item'&&cta.key===p.key?'selected':''}>${esc(p.name)}${p.price!=null?' · '+fmtNum(p.price)+' ₸':''}</option>`).join('')
+    : '<option value="">Меню не загрузилось</option>';
+  document.getElementById('vidMode').value=cta.type||'none';
+  vidModeChanged();
   const sv=document.getElementById('vidSave');
   sv.disabled=false;
   sv.textContent=i>=0?'Сохранить':'Добавить';
@@ -1294,7 +1357,8 @@ async function saveVid(){
   if(!vidFile&&!src){ vidSay('Выберите видео в галерее или вставьте ссылку',true); return; }
 
   const it={caption:document.getElementById('vidCap').value.trim(),
-            cat:document.getElementById('vidCat').value, off:false};
+            cta:vidReadCta(), off:false};
+  if(it.cta.type==='cat') it.cat=it.cta.cat;   /* для совместимости со старой витриной */
 
   btn.disabled=true;
   try{
