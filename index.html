@@ -213,7 +213,7 @@ input,select{font-family:inherit}
   border-radius:12px;padding:11px 14px;font-size:13px;font-weight:800;display:none}
 .offline.show{display:block}
 
-.toast{position:fixed;bottom:92px;left:50%;transform:translateX(-50%);z-index:60;background:#2A261C;
+.toast{position:fixed;bottom:92px;left:50%;transform:translateX(-50%);z-index:120;background:#2A261C;
   border:1px solid var(--border2);color:var(--text);padding:12px 18px;border-radius:12px;font-weight:800;font-size:14px;
   opacity:0;pointer-events:none;transition:.25s;max-width:90%}
 .toast.show{opacity:1;bottom:100px}
@@ -287,6 +287,7 @@ input,select{font-family:inherit}
 .uprog i{display:block;height:100%;width:0;background:var(--gold);border-radius:4px;transition:width .2s}
 .upnote{display:none;font-size:12px;color:var(--gold);font-weight:800;margin-top:6px}
 .upnote.on{display:block}
+.upnote.err{color:var(--red)}
 .ordiv{text-align:center;color:var(--muted);font-size:12px;font-weight:800;margin:2px 0 12px}
 .cfgbox{margin:0 16px 12px;background:rgba(244,180,0,.08);border:1px solid rgba(244,180,0,.3);
   border-radius:13px;padding:13px 14px;font-size:12.5px;color:var(--text2);font-weight:700;line-height:1.5}
@@ -294,6 +295,8 @@ input,select{font-family:inherit}
   border-radius:11px;padding:12px;font-weight:900;font-size:14px}
 .cfgbox.ok{background:rgba(53,199,126,.08);border-color:rgba(53,199,126,.3)}
 .cfgbox.ok b{color:var(--green)}
+button:disabled{opacity:.45}
+.modal .sheet .hint{margin:0 16px 14px}
 </style>
 </head>
 <body>
@@ -458,6 +461,38 @@ input,select{font-family:inherit}
     </div>
   </div>
 
+  <!-- ХРАНИЛИЩЕ ВИДЕО -->
+  <div class="modal" id="cfgModal" onclick="if(event.target===this)closeCfg()">
+    <div class="sheet">
+      <div class="mt">Хранилище видео</div>
+      <div class="hint">Подключается один раз, бесплатно. Сами ролики лежат в облаке, а витрина берёт их оттуда.<br><br>
+        1. Откройте <b style="color:var(--gold)">cloudinary.com</b> и зарегистрируйтесь.<br>
+        2. Settings → Upload → Upload presets. Нужен пресет с режимом <b style="color:var(--gold)">Unsigned</b> — обычно уже есть готовый <b style="color:var(--gold)">ml_default</b>.<br>
+        3. Cloud name возьмите на Dashboard, в блоке Product Environment Credentials.</div>
+      <div class="fld"><label>Cloud name</label>
+        <input id="cfgCloud" placeholder="dxk3n8abc" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
+      <div class="fld"><label>Upload preset (Unsigned)</label>
+        <input id="cfgPreset" placeholder="ml_default" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
+      <div class="mrow">
+        <button class="no" onclick="closeCfg()">Отмена</button>
+        <button class="ok" onclick="saveCfg()">Сохранить</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ПОДТВЕРЖДЕНИЕ -->
+  <div class="modal" id="askModal" onclick="if(event.target===this)closeAsk()">
+    <div class="sheet">
+      <div class="mt" id="askTitle">Подтвердите</div>
+      <div class="hint" id="askText"></div>
+      <div class="fld" id="askInpWrap" style="display:none"><input id="askInp"></div>
+      <div class="mrow">
+        <button class="no" onclick="closeAsk()">Отмена</button>
+        <button class="ok" id="askOk">Удалить</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ЕЩЁ -->
   <section class="screen" id="s-more">
     <header class="hd"><div class="t">Ещё</div></header>
@@ -466,7 +501,7 @@ input,select{font-family:inherit}
       <div class="r"><div class="mark">YaYa</div>
         <div><div class="nm">YaYa Chicken на Абая</div><div class="open"><i></i>Смена открыта</div></div></div>
       <div class="meta">Администратор: <b style="color:var(--text)">Артём</b><br>Смена началась в 08:00</div>
-      <button class="btn-red" onclick="if(confirm('Закрыть смену?'))toast('Смена закрыта')">Закрыть смену</button>
+      <button class="btn-red" onclick="ask('Закрыть смену?','Смена будет завершена.','Закрыть',function(){toast('Смена закрыта')})">Закрыть смену</button>
     </div>
   </section>
 
@@ -867,13 +902,15 @@ function renderCouriers(){
   box.innerHTML=cards;
   if(leaflet) refreshCourierMarkers();
 }
-async function addCourier(){
-  const n=prompt('Имя курьера:'); if(!n||!n.trim())return;
-  COURIERS.push(n.trim()); await saveCouriers(); renderCouriers(); renderOrders(); renderStats(); toast('Курьер добавлен');
+function addCourier(){
+  askInput('Новый курьер','Имя курьера','Добавить',async function(n){
+    COURIERS.push(n); await saveCouriers(); renderCouriers(); renderOrders(); renderStats(); toast('Курьер добавлен');
+  });
 }
-async function delCourier(i){
-  if(!confirm('Удалить курьера «'+COURIERS[i]+'»?'))return;
-  COURIERS.splice(i,1); await saveCouriers(); renderCouriers(); renderOrders(); renderStats();
+function delCourier(i){
+  ask('Удалить курьера?','«'+COURIERS[i]+'» пропадёт из списка назначений.','Удалить',async function(){
+    COURIERS.splice(i,1); await saveCouriers(); renderCouriers(); renderOrders(); renderStats(); toast('Курьер удалён');
+  });
 }
 function courierView(v){
   const list=v==='list';
@@ -1071,8 +1108,11 @@ function tvMove(key,i,d){
 }
 function tvOff(key,i){ TV[key][i].off=!TV[key][i].off; tvDirty=true; renderTV(); }
 function tvDel(key,i){
-  if(!confirm('Удалить ролик из ленты?')) return;
-  TV[key].splice(i,1); tvDirty=true; renderTV();
+  const it=TV[key][i]||{};
+  ask('Удалить ролик?', (it.caption||'Ролик без подписи')+' — уберём из ленты.','Удалить',function(){
+    TV[key].splice(i,1); tvDirty=true; renderTV();
+    toast('Удалено — нажмите «Сохранить и опубликовать»');
+  });
 }
 
 /* ── Загрузка видео с телефона ──────────────────────────────
@@ -1093,21 +1133,52 @@ function renderCfgBox(){
          Пока оно не подключено, видео можно добавлять только ссылкой.
          <button onclick="setupStorage()">Подключить хранилище</button></div>`;
 }
-function setupStorage(){
-  alert('Разовая настройка хранилища (бесплатно, ~5 минут):\n\n'
-      +'1. Откройте cloudinary.com и зарегистрируйтесь.\n'
-      +'2. Settings → Upload → Add upload preset → Signing Mode: Unsigned → Save.\n'
-      +'3. Скопируйте Cloud name (вверху Dashboard) и имя созданного preset.\n\n'
-      +'Впишите их в следующих двух окнах. Больше настраивать ничего не нужно.');
-  const c=prompt('Cloud name (из Cloudinary Dashboard):',MEDIA_CLOUD);
-  if(c===null) return;
-  const p=prompt('Имя upload preset (Unsigned):',MEDIA_PRESET);
-  if(p===null) return;
-  MEDIA_CLOUD=c.trim(); MEDIA_PRESET=p.trim();
-  localStorage.setItem('yaya_cloud',MEDIA_CLOUD);
-  localStorage.setItem('yaya_preset',MEDIA_PRESET);
+/* Встроенные браузеры (Telegram, YouTube и т.п.) глушат alert/confirm/prompt,
+   поэтому все вопросы задаём своими окнами внутри админки. */
+let askCb=null;
+function ask(title,text,okLabel,cb){
+  document.getElementById('askTitle').textContent=title;
+  document.getElementById('askText').textContent=text;
+  document.getElementById('askInpWrap').style.display='none';
+  const b=document.getElementById('askOk');
+  b.textContent=okLabel; askCb=cb;
+  b.onclick=function(){ closeAsk(); if(askCb)askCb(); };
+  document.getElementById('askModal').classList.add('open');
+}
+/* То же окно, но с полем ввода — замена prompt() */
+function askInput(title,placeholder,okLabel,cb){
+  document.getElementById('askTitle').textContent=title;
+  document.getElementById('askText').textContent='';
+  const w=document.getElementById('askInpWrap'), inp=document.getElementById('askInp');
+  w.style.display=''; inp.value=''; inp.placeholder=placeholder||'';
+  const b=document.getElementById('askOk');
+  b.textContent=okLabel; askCb=cb;
+  b.onclick=function(){ const v=inp.value.trim(); if(!v){toast('Заполните поле');return;} closeAsk(); if(askCb)askCb(v); };
+  document.getElementById('askModal').classList.add('open');
+  setTimeout(function(){inp.focus();},250);
+}
+function closeAsk(){ document.getElementById('askModal').classList.remove('open'); askCb=null; }
+
+let cfgPending=false;
+function setupStorage(){ openCfg(); }
+function openCfg(){
+  document.getElementById('cfgCloud').value=MEDIA_CLOUD;
+  document.getElementById('cfgPreset').value=MEDIA_PRESET||'ml_default';
+  document.getElementById('cfgModal').classList.add('open');
+}
+function closeCfg(){ document.getElementById('cfgModal').classList.remove('open'); cfgPending=false; }
+function saveCfg(){
+  const c=document.getElementById('cfgCloud').value.trim().replace(/\s/g,'');
+  const p=document.getElementById('cfgPreset').value.trim().replace(/\s/g,'');
+  if(!c||!p){ toast('Заполните оба поля'); return; }
+  MEDIA_CLOUD=c; MEDIA_PRESET=p;
+  localStorage.setItem('yaya_cloud',c);
+  localStorage.setItem('yaya_preset',p);
+  const again=cfgPending;
+  document.getElementById('cfgModal').classList.remove('open');
+  cfgPending=false;
   renderCfgBox();
-  toast(cloudReady()?'Хранилище подключено':'Не заполнено — загрузка пока по ссылке');
+  toast(again?'Готово — нажмите «Добавить» ещё раз':'Хранилище подключено');
 }
 /* Обложка берётся из первого кадра самого ролика */
 function cloudPoster(url){
@@ -1168,10 +1239,20 @@ function onVidPick(e){
 }
 function vidProgress(p){
   const bar=document.getElementById('vidProg'), note=document.getElementById('vidNote');
+  note.classList.remove('err');
   if(p<0){ bar.classList.remove('on'); note.classList.remove('on'); return; }
   bar.classList.add('on'); note.classList.add('on');
   bar.querySelector('i').style.width=Math.round(p*100)+'%';
   note.textContent='Загрузка '+Math.round(p*100)+'%';
+}
+/* Сообщение прямо в окне — там, куда человек смотрит */
+function vidSay(text,isErr){
+  const note=document.getElementById('vidNote');
+  document.getElementById('vidProg').classList.remove('on');
+  note.textContent=text;
+  note.classList.add('on');
+  note.classList.toggle('err',!!isErr);
+  toast(text);
 }
 function openVid(i,kind){
   vidIdx=i; vidKind=kind; vidFile=null;
@@ -1192,7 +1273,9 @@ function openVid(i,kind){
   document.getElementById('vidCap').value=it.caption||'';
   document.getElementById('vidCat').innerHTML=TV_CATS.map(([v,l],n)=>
     `<option value="${v}" ${n===1?'disabled':''} ${(it.cat||'')===v&&n!==1?'selected':''}>${l}</option>`).join('');
-  document.getElementById('vidSave').textContent=i>=0?'Сохранить':'Добавить';
+  const sv=document.getElementById('vidSave');
+  sv.disabled=false;
+  sv.textContent=i>=0?'Сохранить':'Добавить';
   document.getElementById('vidModal').classList.add('open');
 }
 function closeVid(){ document.getElementById('vidModal').classList.remove('open'); }
@@ -1200,7 +1283,7 @@ function closeVid(){ document.getElementById('vidModal').classList.remove('open'
 async function saveVid(){
   const btn=document.getElementById('vidSave');
   const src=document.getElementById('vidSrc').value.trim();
-  if(!vidFile&&!src){ toast('Выберите видео в галерее или вставьте ссылку'); return; }
+  if(!vidFile&&!src){ vidSay('Выберите видео в галерее или вставьте ссылку',true); return; }
 
   const it={caption:document.getElementById('vidCap').value.trim(),
             cat:document.getElementById('vidCat').value, off:false};
@@ -1216,11 +1299,9 @@ async function saveVid(){
         if(!e1.absent) throw e1;
         if(!cloudReady()){
           vidProgress(-1);
-          if(!confirm('Чтобы грузить видео с телефона, нужно один раз подключить бесплатное хранилище. Настроить сейчас?')){
-            btn.disabled=false; btn.textContent=vidIdx>=0?'Сохранить':'Добавить'; return;
-          }
-          setupStorage();
-          if(!cloudReady()){ btn.disabled=false; btn.textContent=vidIdx>=0?'Сохранить':'Добавить'; return; }
+          cfgPending=true; openCfg();
+          vidSay('Сначала подключите хранилище — это делается один раз',true);
+          return;
         }
         url=await uploadCloud(vidFile,vidProgress);
       }
@@ -1228,7 +1309,7 @@ async function saveVid(){
       it.poster=document.getElementById('vidPoster').value.trim()||cloudPoster(url);
     } else {
       const id=ytId(src), mp4=isMp4(src);
-      if(!id&&!mp4){ toast('Не разобрал ссылку. Нужен YouTube или прямая ссылка на mp4'); return; }
+      if(!id&&!mp4){ vidSay('Не разобрал ссылку. Нужен YouTube или прямая ссылка на mp4',true); return; }
       if(id) it.v=id;
       else { it.mp4=src; it.poster=document.getElementById('vidPoster').value.trim()||cloudPoster(src); }
     }
@@ -1242,10 +1323,9 @@ async function saveVid(){
     toast(ok?'Ролик добавлен и уже виден на витрине':'Ролик добавлен, но не сохранился — нажмите «Сохранить и опубликовать»');
     tvDirty=!ok;
   }catch(e){
-    toast('Не получилось: '+(e.message||e));
+    vidSay('Не получилось: '+(e.message||e),true);
   }finally{
     btn.disabled=false; btn.textContent=vidIdx>=0?'Сохранить':'Добавить';
-    vidProgress(-1); vidFile=null;
   }
 }
 
