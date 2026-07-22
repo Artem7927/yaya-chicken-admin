@@ -229,6 +229,55 @@ input,select{font-family:inherit}
 .gate button{width:100%;max-width:320px;background:var(--gold);color:#1a1400;border:none;border-radius:13px;
   padding:15px;font-weight:900;font-size:16px}
 .gate .err{color:var(--red);font-size:13px;font-weight:800;height:16px}
+
+/* ── ТВ / Радио ── */
+.hint{margin:0 16px 12px;font-size:12.5px;color:var(--muted);font-weight:700;line-height:1.5}
+.addwide{width:calc(100% - 32px);margin:0 16px 12px;background:var(--panel2);border:1px dashed var(--border2);
+  color:var(--gold);border-radius:13px;padding:14px;font-weight:900;font-size:14px}
+.vrow{display:flex;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border);align-items:flex-start}
+.vrow.off{opacity:.45}
+.vthumb{width:60px;height:82px;border-radius:11px;flex:none;background:#000 center/cover no-repeat;
+  border:1px solid var(--border);position:relative;overflow:hidden}
+.vthumb .adtag{position:absolute;left:0;right:0;bottom:0;background:rgba(244,180,0,.9);color:#1a1400;
+  font:900 8px Nunito;letter-spacing:.5px;text-align:center;padding:2px 0}
+.vinfo{flex:1;min-width:0}
+.vinfo .vc{font-weight:800;font-size:14px;line-height:1.3;word-break:break-word}
+.vinfo .vm{font-size:11.5px;color:var(--muted);font-weight:700;margin-top:4px;word-break:break-all}
+.vops{display:flex;gap:6px;margin-top:9px;flex-wrap:wrap}
+.vops button{background:var(--panel2);border:1px solid var(--border2);color:var(--text2);
+  border-radius:9px;padding:7px 10px;font-weight:800;font-size:11.5px}
+.vops button.act{color:var(--gold)}
+.vops button.dng{color:var(--red);border-color:rgba(240,69,58,.35)}
+.everybar{display:flex;align-items:center;gap:10px;margin:0 16px 12px;background:var(--panel);
+  border:1px solid var(--border);border-radius:13px;padding:12px 14px;font-weight:800;font-size:13px}
+.everybar input{width:66px;background:var(--panel2);border:1px solid var(--border2);color:var(--text);
+  border-radius:9px;padding:9px;font-weight:900;font-size:15px;text-align:center}
+.fld{margin:0 16px 12px}
+.fld label{display:block;font-size:12px;font-weight:800;color:var(--text2);margin-bottom:6px}
+.fld input,.fld select,.fld textarea{width:100%;background:var(--panel2);border:1px solid var(--border2);
+  color:var(--text);border-radius:12px;padding:13px;font-size:15px;font-weight:700}
+.fld textarea{resize:vertical;min-height:64px}
+.savebar{width:calc(100% - 32px);margin:4px 16px 20px;background:var(--gold);color:#1a1400;border:none;
+  border-radius:14px;padding:15px;font-weight:900;font-size:15px}
+.modal{position:fixed;inset:0;z-index:90;background:rgba(0,0,0,.72);backdrop-filter:blur(4px);
+  display:none;align-items:flex-end;justify-content:center}
+.modal.open{display:flex}
+.modal .sheet{width:100%;max-width:480px;max-height:90vh;overflow-y:auto;background:var(--bg);
+  border-top:1px solid var(--border2);border-radius:20px 20px 0 0;padding:18px 0 24px;animation:up .22s ease}
+@keyframes up{from{transform:translateY(30px);opacity:0}to{transform:none;opacity:1}}
+.modal .mt{font-family:'Bebas Neue',sans-serif;font-size:23px;letter-spacing:.6px;padding:0 16px 14px}
+.mrow{display:flex;gap:10px;padding:0 16px}
+.mrow button{flex:1;border-radius:13px;padding:14px;font-weight:900;font-size:15px;border:none}
+.mrow .ok{background:var(--gold);color:#1a1400}
+.mrow .no{background:var(--panel2);border:1px solid var(--border2);color:var(--text2)}
+.rpreview{margin:0 16px 12px;background:var(--panel);border:1px solid var(--border);border-radius:14px;
+  padding:14px;display:flex;align-items:center;gap:12px}
+.rpreview .eq{display:inline-flex;align-items:flex-end;gap:3px;height:22px;color:var(--gold)}
+.rpreview .eq i{width:4px;height:8px;background:currentColor;border-radius:2px;animation:eqb .9s ease-in-out infinite}
+.rpreview .eq i:nth-child(2){animation-delay:.18s}.rpreview .eq i:nth-child(3){animation-delay:.34s}
+@keyframes eqb{0%,100%{height:6px}50%{height:20px}}
+.rpreview .rt b{display:block;font-size:9px;font-weight:900;letter-spacing:1.6px;color:var(--gold)}
+.rpreview .rt i{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1px;font-style:normal;color:#fff}
 </style>
 </head>
 <body>
@@ -297,6 +346,89 @@ input,select{font-family:inherit}
     <div class="mtabs" id="menuTabs"></div>
     <div id="menuList"><div class="loading"><div class="spinner"></div>Загружаю меню…</div></div>
   </section>
+
+  <!-- YAYA ТВ -->
+  <section class="screen" id="s-tv">
+    <header class="hd">
+      <div class="t">YaYa ТВ</div>
+      <div class="acts"><button class="btn-line" onclick="go('more')">Назад</button></div>
+    </header>
+    <div class="seg" id="tvSeg">
+      <button class="active" onclick="tvSec('feed',this)">Лента</button>
+      <button onclick="tvSec('ads',this)">Реклама</button>
+    </div>
+
+    <div id="tvSecFeed">
+      <div class="hint">Ролики из этой ленты покупатель смотрит во вкладке «ТВ» — свайпом вверх, как в Shorts. Вставьте ссылку на YouTube-видео или Shorts: ID определится сам. Подпись и кнопка «Заказать» — по желанию.</div>
+      <button class="addwide" onclick="openVid(-1,'feed')">+ Добавить видео</button>
+      <div id="tvFeedList"></div>
+    </div>
+
+    <div id="tvSecAds" style="display:none">
+      <div class="hint">Ваши рекламные ролики встают в ленту между обычными видео. Можно вставить ссылку на свой mp4-файл или на YouTube. Кнопка «Заказать» ведёт покупателя в нужную категорию меню.</div>
+      <div class="everybar">Показывать рекламу каждые
+        <input id="tvEvery" type="number" min="1" max="20" value="4" onchange="tvDirty=true">
+        роликов</div>
+      <button class="addwide" onclick="openVid(-1,'ads')">+ Добавить рекламу</button>
+      <div id="tvAdsList"></div>
+    </div>
+
+    <button class="savebar" onclick="saveTV()">Сохранить и опубликовать</button>
+  </section>
+
+  <!-- YAYA RADIO -->
+  <section class="screen" id="s-radio">
+    <header class="hd">
+      <div class="t">YaYa Radio</div>
+      <div class="acts"><button class="btn-line" onclick="go('more')">Назад</button></div>
+    </header>
+    <div class="hint">Радио — это кнопка в шапке витрины. Покупатель нажимает её и слышит вашу волну. Подойдёт любой YouTube-ролик или прямой эфир: вставьте ссылку, остальное подставится само.</div>
+    <div class="rpreview">
+      <span class="eq"><i></i><i></i><i></i></span>
+      <span class="rt"><b>РАДИО</b><i id="rdPreview">YaYa</i></span>
+    </div>
+    <div class="fld">
+      <label>Ссылка на YouTube или ID ролика</label>
+      <input id="rdUrl" placeholder="https://youtu.be/2Hz-3imnsWc" oninput="rdChanged()">
+    </div>
+    <div class="fld">
+      <label>Название волны (видно на кнопке)</label>
+      <input id="rdTitle" placeholder="YaYa" maxlength="14" oninput="rdChanged()">
+    </div>
+    <div class="prod" style="border-top:1px solid var(--border)">
+      <div class="pi"><div class="pn">Радио включено</div>
+        <div class="pp" style="font-size:12px;font-family:Nunito;color:var(--text2);font-weight:700;letter-spacing:0">Выключите — кнопка исчезнет с витрины</div></div>
+      <button class="sw on" id="rdSw" onclick="rdToggle(this)"></button>
+    </div>
+    <button class="savebar" onclick="saveRadio()">Сохранить и опубликовать</button>
+  </section>
+
+  <!-- МОДАЛКА РОЛИКА -->
+  <div class="modal" id="vidModal" onclick="if(event.target===this)closeVid()">
+    <div class="sheet">
+      <div class="mt" id="vidTitle">Новое видео</div>
+      <div class="fld">
+        <label id="vidSrcLabel">Ссылка на YouTube или Shorts</label>
+        <input id="vidSrc" placeholder="https://youtube.com/shorts/XXXXXXXXXXX">
+      </div>
+      <div class="fld" id="vidPosterWrap" style="display:none">
+        <label>Обложка (ссылка на картинку, необязательно)</label>
+        <input id="vidPoster" placeholder="https://…/cover.jpg">
+      </div>
+      <div class="fld">
+        <label>Подпись под видео</label>
+        <textarea id="vidCap" maxlength="120" placeholder="Например: Крылышки острые — новинка недели"></textarea>
+      </div>
+      <div class="fld">
+        <label>Кнопка на ролике</label>
+        <select id="vidCat"></select>
+      </div>
+      <div class="mrow">
+        <button class="no" onclick="closeVid()">Отмена</button>
+        <button class="ok" id="vidSave" onclick="saveVid()">Добавить</button>
+      </div>
+    </div>
+  </div>
 
   <!-- ЕЩЁ -->
   <section class="screen" id="s-more">
@@ -373,12 +505,14 @@ const TABS=[
 ];
 document.getElementById('botnav').innerHTML=TABS.map(([id,l,ic])=>
   `<a href="#" data-id="${id}" onclick="go('${id}');return false"><svg viewBox="0 0 24 24">${ic}</svg>${l}${id==='orders'?'<span class="nb hide" id="navNew" style="display:none"></span>':''}</a>`).join('');
-function go(id){
+function go(id,navId){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.getElementById('s-'+id).classList.add('active');
-  document.querySelectorAll('.bn a').forEach(a=>a.classList.toggle('active',a.dataset.id===id));
+  document.querySelectorAll('.bn a').forEach(a=>a.classList.toggle('active',a.dataset.id===(navId||id)));
   window.scrollTo(0,0);
-  if(id==='menu' && !menuLoaded) loadMenu();
+  if(id==='menu'  && !menuLoaded) loadMenu();
+  if(id==='tv'    && !tvLoaded)   loadTV();
+  if(id==='radio' && !rdLoaded)   loadRadio();
 }
 
 /* ═════════ ДАННЫЕ ═════════ */
@@ -818,8 +952,176 @@ const MORE=[
   ['Настройки','<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>'],
   ['Поддержка','<path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/>'],
 ];
-document.getElementById('moreGrid').innerHTML=MORE.map(([l,ic])=>
-  `<a class="tile" href="#" onclick="toast('«${l}» — добавим следующим шагом');return false"><svg viewBox="0 0 24 24">${ic}</svg><span>${l}</span></a>`).join('');
+const MORE_LINK={'YaYa TV':'tv','YaYa Radio':'radio'};
+document.getElementById('moreGrid').innerHTML=MORE.map(([l,ic])=>{
+  const scr=MORE_LINK[l];
+  const act=scr?`go('${scr}','more')`:`toast('«${l}» — добавим следующим шагом')`;
+  return `<a class="tile" href="#" onclick="${act};return false"><svg viewBox="0 0 24 24">${ic}</svg><span>${l}</span></a>`;
+}).join('');
+
+/* ═════════ YaYa ТВ ═════════
+   Лента и реклама лежат в /kv/yaya_tv, витрина читает тот же ключ.
+   Формат: {every:4, videos:[…], ads:[…]}
+   Элемент: {v:'YT_ID'} либо {mp4:'https://…/clip.mp4', poster:'…'}
+            + caption, cat, off                                     */
+const TV_KEY='yaya_tv', RADIO_KEY='yaya_radio';
+const TV_CATS=[
+  ['','Без кнопки'],['','— или в меню —'],
+  ['sets','Сеты'],['wings','Крылышки'],['snacks','Закуски'],['burgers','Бургеры'],
+  ['doners','Шаурма'],['pizza','Пицца'],['bliny','Блины'],['drinks','Напитки'],
+  ['coffee','Кофе'],['cocktails','Коктейли'],['mohito','Мохито'],
+  ['lemonade','Лимонады'],['sauces','Соусы']
+];
+let TV={every:4,videos:[],ads:[]}, tvLoaded=false, tvDirty=false, tvCurSec='feed';
+
+/* Из любой ссылки достаём ID ролика YouTube */
+function ytId(s){
+  s=String(s||'').trim();
+  if(!s) return '';
+  if(/^[\w-]{11}$/.test(s)) return s;
+  const m=s.match(/(?:shorts\/|live\/|embed\/|youtu\.be\/|[?&]v=)([\w-]{11})/);
+  return m?m[1]:'';
+}
+function isMp4(s){ return /^https?:\/\/.+\.(mp4|webm|mov)(\?.*)?$/i.test(String(s||'').trim()); }
+function catName(id){ const f=TV_CATS.find(c=>c[0]===id&&c[1]!=='Без кнопки'&&c[1][0]!=='—'); return f?f[1]:''; }
+
+async function loadTV(){
+  tvLoaded=true;
+  try{
+    const j=await api('/kv/'+TV_KEY);
+    const v=j.value;
+    if(v&&typeof v==='object'){
+      TV.every=Number(v.every)>0?Number(v.every):4;
+      TV.videos=Array.isArray(v.videos)?v.videos:[];
+      TV.ads=Array.isArray(v.ads)?v.ads:[];
+    }
+  }catch(e){ toast('Лента ещё не сохранялась — начните с чистого листа'); }
+  document.getElementById('tvEvery').value=TV.every;
+  renderTV();
+}
+function tvSec(sec,btn){
+  tvCurSec=sec;
+  document.querySelectorAll('#tvSeg button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tvSecFeed').style.display=sec==='feed'?'':'none';
+  document.getElementById('tvSecAds').style.display=sec==='ads'?'':'none';
+}
+function tvThumb(it){
+  if(it.poster) return it.poster;
+  if(it.v) return 'https://i.ytimg.com/vi/'+it.v+'/hqdefault.jpg';
+  return '';
+}
+function renderTV(){
+  [['videos','tvFeedList','Лента пока пустая. Нажмите «Добавить видео».'],
+   ['ads','tvAdsList','Рекламы пока нет. Нажмите «Добавить рекламу».']].forEach(([key,box,empty])=>{
+    const list=TV[key];
+    const el=document.getElementById(box);
+    if(!list.length){ el.innerHTML=`<div class="empty">${empty}</div>`; return; }
+    el.innerHTML=list.map((it,i)=>{
+      const th=tvThumb(it), cn=catName(it.cat);
+      return `<div class="vrow ${it.off?'off':''}">
+        <div class="vthumb" style="${th?`background-image:url('${esc(th)}')`:''}">${key==='ads'?'<div class="adtag">РЕКЛАМА</div>':''}</div>
+        <div class="vinfo">
+          <div class="vc">${esc(it.caption||'Без подписи')}</div>
+          <div class="vm">${it.v?('YouTube · '+esc(it.v)):esc(it.mp4||'')}${cn?' · кнопка: '+esc(cn):''}</div>
+          <div class="vops">
+            <button onclick="tvMove('${key}',${i},-1)" ${i===0?'disabled style=opacity:.35':''}>↑</button>
+            <button onclick="tvMove('${key}',${i},1)" ${i===list.length-1?'disabled style=opacity:.35':''}>↓</button>
+            <button class="act" onclick="openVid(${i},'${key==='videos'?'feed':'ads'}')">Изменить</button>
+            <button onclick="tvOff('${key}',${i})">${it.off?'Включить':'Скрыть'}</button>
+            <button class="dng" onclick="tvDel('${key}',${i})">Удалить</button>
+          </div>
+        </div></div>`;
+    }).join('');
+  });
+}
+function tvMove(key,i,d){
+  const l=TV[key], j=i+d;
+  if(j<0||j>=l.length) return;
+  [l[i],l[j]]=[l[j],l[i]]; tvDirty=true; renderTV();
+}
+function tvOff(key,i){ TV[key][i].off=!TV[key][i].off; tvDirty=true; renderTV(); }
+function tvDel(key,i){
+  if(!confirm('Удалить ролик из ленты?')) return;
+  TV[key].splice(i,1); tvDirty=true; renderTV();
+}
+
+/* ── Модалка ролика ── */
+let vidIdx=-1, vidKind='feed';
+function openVid(i,kind){
+  vidIdx=i; vidKind=kind;
+  const key=kind==='feed'?'videos':'ads';
+  const it=i>=0?TV[key][i]:{};
+  document.getElementById('vidTitle').textContent=
+    (i>=0?'Изменить ':'Новое ')+(kind==='ads'?'рекламный ролик':'видео');
+  document.getElementById('vidSrcLabel').textContent=
+    kind==='ads'?'Ссылка на mp4-файл или на YouTube':'Ссылка на YouTube или Shorts';
+  document.getElementById('vidSrc').placeholder=
+    kind==='ads'?'https://site.kz/reklama.mp4':'https://youtube.com/shorts/XXXXXXXXXXX';
+  document.getElementById('vidSrc').value=it.mp4||it.v||'';
+  document.getElementById('vidPosterWrap').style.display=kind==='ads'?'':'none';
+  document.getElementById('vidPoster').value=it.poster||'';
+  document.getElementById('vidCap').value=it.caption||'';
+  document.getElementById('vidCat').innerHTML=TV_CATS.map(([v,l],n)=>
+    `<option value="${v}" ${n===1?'disabled':''} ${(it.cat||'')===v&&n!==1?'selected':''}>${l}</option>`).join('');
+  document.getElementById('vidSave').textContent=i>=0?'Сохранить':'Добавить';
+  document.getElementById('vidModal').classList.add('open');
+}
+function closeVid(){ document.getElementById('vidModal').classList.remove('open'); }
+function saveVid(){
+  const src=document.getElementById('vidSrc').value.trim();
+  if(!src){ toast('Вставьте ссылку на ролик'); return; }
+  const id=ytId(src), mp4=isMp4(src);
+  if(!id&&!mp4){ toast('Не разобрал ссылку. Нужен YouTube или прямая ссылка на mp4'); return; }
+  const it={caption:document.getElementById('vidCap').value.trim(),
+            cat:document.getElementById('vidCat').value, off:false};
+  if(id) it.v=id; else { it.mp4=src; it.poster=document.getElementById('vidPoster').value.trim(); }
+  const key=vidKind==='feed'?'videos':'ads';
+  if(vidIdx>=0){ it.off=!!TV[key][vidIdx].off; TV[key][vidIdx]=it; } else TV[key].push(it);
+  tvDirty=true; closeVid(); renderTV();
+  toast(vidIdx>=0?'Ролик изменён — не забудьте сохранить':'Ролик добавлен — не забудьте сохранить');
+}
+
+async function saveTV(){
+  TV.every=Math.max(1,Number(document.getElementById('tvEvery').value)||4);
+  saveInFlight++; updateSync();
+  const ok=await tryPut('/kv/'+TV_KEY,TV);
+  saveInFlight=Math.max(0,saveInFlight-1); updateSync();
+  if(ok){ tvDirty=false; toast('Опубликовано — витрина обновится сама'); }
+  else toast('Не сохранилось — проверьте связь и повторите');
+}
+
+/* ═════════ YaYa Radio ═════════ */
+let RADIO={videoId:'2Hz-3imnsWc',title:'YaYa',off:false}, rdLoaded=false;
+async function loadRadio(){
+  rdLoaded=true;
+  try{
+    const j=await api('/kv/'+RADIO_KEY);
+    if(j.value&&typeof j.value==='object') RADIO=Object.assign(RADIO,j.value);
+  }catch(e){}
+  document.getElementById('rdUrl').value=RADIO.videoId||'';
+  document.getElementById('rdTitle').value=RADIO.title||'YaYa';
+  document.getElementById('rdSw').classList.toggle('on',!RADIO.off);
+  rdChanged();
+}
+function rdChanged(){
+  const t=document.getElementById('rdTitle').value.trim()||'YaYa';
+  document.getElementById('rdPreview').textContent=t;
+}
+function rdToggle(btn){ btn.classList.toggle('on'); }
+async function saveRadio(){
+  const raw=document.getElementById('rdUrl').value.trim();
+  const id=ytId(raw);
+  if(!id){ toast('Не разобрал ссылку — нужен YouTube-ролик или его ID'); return; }
+  RADIO={videoId:id,
+         title:document.getElementById('rdTitle').value.trim()||'YaYa',
+         off:!document.getElementById('rdSw').classList.contains('on')};
+  document.getElementById('rdUrl').value=id;
+  saveInFlight++; updateSync();
+  const ok=await tryPut('/kv/'+RADIO_KEY,RADIO);
+  saveInFlight=Math.max(0,saveInFlight-1); updateSync();
+  toast(ok?'Опубликовано — витрина обновится сама':'Не сохранилось — проверьте связь и повторите');
+}
 </script>
 </body>
 </html>
