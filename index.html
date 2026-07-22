@@ -278,6 +278,22 @@ input,select{font-family:inherit}
 @keyframes eqb{0%,100%{height:6px}50%{height:20px}}
 .rpreview .rt b{display:block;font-size:9px;font-weight:900;letter-spacing:1.6px;color:var(--gold)}
 .rpreview .rt i{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1px;font-style:normal;color:#fff}
+.pickbtn{width:100%;background:var(--panel2);border:1px solid var(--border2);color:var(--gold);
+  border-radius:12px;padding:14px;font-weight:900;font-size:14px;display:flex;align-items:center;justify-content:center;gap:8px}
+.pickbtn svg{width:18px;height:18px;stroke:var(--gold);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.pickname{font-size:12px;color:var(--text2);font-weight:700;margin-top:8px;word-break:break-all}
+.uprog{display:none;height:7px;border-radius:4px;background:var(--panel2);overflow:hidden;margin-top:9px}
+.uprog.on{display:block}
+.uprog i{display:block;height:100%;width:0;background:var(--gold);border-radius:4px;transition:width .2s}
+.upnote{display:none;font-size:12px;color:var(--gold);font-weight:800;margin-top:6px}
+.upnote.on{display:block}
+.ordiv{text-align:center;color:var(--muted);font-size:12px;font-weight:800;margin:2px 0 12px}
+.cfgbox{margin:0 16px 12px;background:rgba(244,180,0,.08);border:1px solid rgba(244,180,0,.3);
+  border-radius:13px;padding:13px 14px;font-size:12.5px;color:var(--text2);font-weight:700;line-height:1.5}
+.cfgbox button{margin-top:10px;width:100%;background:var(--gold);color:#1a1400;border:none;
+  border-radius:11px;padding:12px;font-weight:900;font-size:14px}
+.cfgbox.ok{background:rgba(53,199,126,.08);border-color:rgba(53,199,126,.3)}
+.cfgbox.ok b{color:var(--green)}
 </style>
 </head>
 <body>
@@ -358,6 +374,7 @@ input,select{font-family:inherit}
       <button onclick="tvSec('ads',this)">Реклама</button>
     </div>
 
+    <div id="tvCfgBox"></div>
     <div id="tvSecFeed">
       <div class="hint">Ролики из этой ленты покупатель смотрит во вкладке «ТВ» — свайпом вверх, как в Shorts. Вставьте ссылку на YouTube-видео или Shorts: ID определится сам. Подпись и кнопка «Заказать» — по желанию.</div>
       <button class="addwide" onclick="openVid(-1,'feed')">+ Добавить видео</button>
@@ -407,6 +424,17 @@ input,select{font-family:inherit}
   <div class="modal" id="vidModal" onclick="if(event.target===this)closeVid()">
     <div class="sheet">
       <div class="mt" id="vidTitle">Новое видео</div>
+      <div class="fld">
+        <label>Видео с телефона</label>
+        <input type="file" id="vidFile" accept="video/*" style="display:none" onchange="onVidPick(event)">
+        <button class="pickbtn" onclick="document.getElementById('vidFile').click()">
+          <svg viewBox="0 0 24 24"><rect x="2" y="6" width="14" height="12" rx="2"/><path d="m16 11 6-3v8l-6-3z"/></svg>
+          Выбрать видео из галереи</button>
+        <div class="pickname" id="vidFileName"></div>
+        <div class="uprog" id="vidProg"><i></i></div>
+        <div class="upnote" id="vidNote"></div>
+      </div>
+      <div class="ordiv">или</div>
       <div class="fld">
         <label id="vidSrcLabel">Ссылка на YouTube или Shorts</label>
         <input id="vidSrc" placeholder="https://youtube.com/shorts/XXXXXXXXXXX">
@@ -997,6 +1025,7 @@ async function loadTV(){
     }
   }catch(e){ toast('Лента ещё не сохранялась — начните с чистого листа'); }
   document.getElementById('tvEvery').value=TV.every;
+  renderCfgBox();
   renderTV();
 }
 function tvSec(sec,btn){
@@ -1046,19 +1075,118 @@ function tvDel(key,i){
   TV[key].splice(i,1); tvDirty=true; renderTV();
 }
 
+/* ── Загрузка видео с телефона ──────────────────────────────
+   Сначала пробуем ваш сервер (/feed-upload). Если он такого не
+   умеет — грузим в бесплатное хранилище Cloudinary: его нужно
+   подключить один раз, дальше всё работает само.            */
+let MEDIA_CLOUD=localStorage.getItem('yaya_cloud')||'';
+let MEDIA_PRESET=localStorage.getItem('yaya_preset')||'';
+function cloudReady(){ return !!(MEDIA_CLOUD&&MEDIA_PRESET); }
+
+function renderCfgBox(){
+  const box=document.getElementById('tvCfgBox');
+  if(!box) return;
+  box.innerHTML=cloudReady()
+    ? `<div class="cfgbox ok"><b>Хранилище подключено</b> · ${esc(MEDIA_CLOUD)}. Видео грузится прямо из галереи телефона.
+         <button style="background:var(--panel2);color:var(--text2);border:1px solid var(--border2)" onclick="setupStorage()">Изменить</button></div>`
+    : `<div class="cfgbox">Чтобы заливать ролики прямо с телефона, один раз подключите бесплатное хранилище — 5 минут.
+         Пока оно не подключено, видео можно добавлять только ссылкой.
+         <button onclick="setupStorage()">Подключить хранилище</button></div>`;
+}
+function setupStorage(){
+  alert('Разовая настройка хранилища (бесплатно, ~5 минут):\n\n'
+      +'1. Откройте cloudinary.com и зарегистрируйтесь.\n'
+      +'2. Settings → Upload → Add upload preset → Signing Mode: Unsigned → Save.\n'
+      +'3. Скопируйте Cloud name (вверху Dashboard) и имя созданного preset.\n\n'
+      +'Впишите их в следующих двух окнах. Больше настраивать ничего не нужно.');
+  const c=prompt('Cloud name (из Cloudinary Dashboard):',MEDIA_CLOUD);
+  if(c===null) return;
+  const p=prompt('Имя upload preset (Unsigned):',MEDIA_PRESET);
+  if(p===null) return;
+  MEDIA_CLOUD=c.trim(); MEDIA_PRESET=p.trim();
+  localStorage.setItem('yaya_cloud',MEDIA_CLOUD);
+  localStorage.setItem('yaya_preset',MEDIA_PRESET);
+  renderCfgBox();
+  toast(cloudReady()?'Хранилище подключено':'Не заполнено — загрузка пока по ссылке');
+}
+/* Обложка берётся из первого кадра самого ролика */
+function cloudPoster(url){
+  if(!url||!/res\.cloudinary\.com/.test(url)) return '';
+  return url.replace('/upload/','/upload/so_1,c_fill,h_960,w_540/')
+            .replace(/\.(mp4|mov|webm|m4v|avi)(\?.*)?$/i,'.jpg');
+}
+
+function uploadOwn(file,onProg){
+  return new Promise((resolve,reject)=>{
+    const fd=new FormData(); fd.append('video',file);
+    const xhr=new XMLHttpRequest();
+    xhr.open('POST',API+'/feed-upload');
+    xhr.timeout=180000;
+    xhr.upload.onprogress=e=>{ if(e.lengthComputable&&onProg) onProg(e.loaded/e.total); };
+    const absent=()=>{ const er=new Error('no-endpoint'); er.absent=true; reject(er); };
+    xhr.onload=()=>{
+      if(xhr.status===404||xhr.status===405) return absent();
+      if(xhr.status<200||xhr.status>=300) return reject(new Error('Сервер отклонил загрузку (код '+xhr.status+')'));
+      try{ const d=JSON.parse(xhr.responseText||'{}');
+           const u=d.url||d.secure_url; if(u) resolve(u); else absent(); }
+      catch(e){ absent(); }
+    };
+    xhr.onerror=()=>absent();
+    xhr.ontimeout=()=>reject(new Error('Загрузка идёт слишком долго — проверьте интернет'));
+    xhr.send(fd);
+  });
+}
+function uploadCloud(file,onProg){
+  return new Promise((resolve,reject)=>{
+    const fd=new FormData(); fd.append('file',file); fd.append('upload_preset',MEDIA_PRESET);
+    const xhr=new XMLHttpRequest();
+    xhr.open('POST','https://api.cloudinary.com/v1_1/'+MEDIA_CLOUD+'/video/upload');
+    xhr.timeout=300000;
+    xhr.upload.onprogress=e=>{ if(e.lengthComputable&&onProg) onProg(e.loaded/e.total); };
+    xhr.onload=()=>{
+      try{ const d=JSON.parse(xhr.responseText);
+           if(d.secure_url) resolve(d.secure_url);
+           else reject(new Error(d.error&&d.error.message?d.error.message:'Хранилище отклонило файл')); }
+      catch(e){ reject(new Error('Хранилище ответило непонятно — проверьте Cloud name и preset')); }
+    };
+    xhr.onerror=()=>reject(new Error('Нет связи с хранилищем'));
+    xhr.ontimeout=()=>reject(new Error('Загрузка идёт слишком долго — проверьте интернет'));
+    xhr.send(fd);
+  });
+}
+
 /* ── Модалка ролика ── */
-let vidIdx=-1, vidKind='feed';
+let vidIdx=-1, vidKind='feed', vidFile=null;
+function onVidPick(e){
+  const f=(e.target.files||[])[0];
+  if(!f) return;
+  if(!/^video\//.test(f.type)){ toast('Это не видеофайл'); e.target.value=''; return; }
+  if(f.size>100*1024*1024){ toast('Файл больше 100 МБ — снимите или сожмите ролик короче'); e.target.value=''; return; }
+  vidFile=f;
+  document.getElementById('vidSrc').value='';
+  document.getElementById('vidFileName').textContent=f.name+' · '+(f.size/1048576).toFixed(1)+' МБ';
+}
+function vidProgress(p){
+  const bar=document.getElementById('vidProg'), note=document.getElementById('vidNote');
+  if(p<0){ bar.classList.remove('on'); note.classList.remove('on'); return; }
+  bar.classList.add('on'); note.classList.add('on');
+  bar.querySelector('i').style.width=Math.round(p*100)+'%';
+  note.textContent='Загрузка '+Math.round(p*100)+'%';
+}
 function openVid(i,kind){
-  vidIdx=i; vidKind=kind;
+  vidIdx=i; vidKind=kind; vidFile=null;
   const key=kind==='feed'?'videos':'ads';
   const it=i>=0?TV[key][i]:{};
   document.getElementById('vidTitle').textContent=
-    (i>=0?'Изменить ':'Новое ')+(kind==='ads'?'рекламный ролик':'видео');
+    (i>=0?'Изменить ':'Новый ')+(kind==='ads'?'рекламный ролик':'ролик в ленте');
   document.getElementById('vidSrcLabel').textContent=
     kind==='ads'?'Ссылка на mp4-файл или на YouTube':'Ссылка на YouTube или Shorts';
   document.getElementById('vidSrc').placeholder=
     kind==='ads'?'https://site.kz/reklama.mp4':'https://youtube.com/shorts/XXXXXXXXXXX';
   document.getElementById('vidSrc').value=it.mp4||it.v||'';
+  document.getElementById('vidFile').value='';
+  document.getElementById('vidFileName').textContent='';
+  vidProgress(-1);
   document.getElementById('vidPosterWrap').style.display=kind==='ads'?'':'none';
   document.getElementById('vidPoster').value=it.poster||'';
   document.getElementById('vidCap').value=it.caption||'';
@@ -1068,18 +1196,57 @@ function openVid(i,kind){
   document.getElementById('vidModal').classList.add('open');
 }
 function closeVid(){ document.getElementById('vidModal').classList.remove('open'); }
-function saveVid(){
+
+async function saveVid(){
+  const btn=document.getElementById('vidSave');
   const src=document.getElementById('vidSrc').value.trim();
-  if(!src){ toast('Вставьте ссылку на ролик'); return; }
-  const id=ytId(src), mp4=isMp4(src);
-  if(!id&&!mp4){ toast('Не разобрал ссылку. Нужен YouTube или прямая ссылка на mp4'); return; }
+  if(!vidFile&&!src){ toast('Выберите видео в галерее или вставьте ссылку'); return; }
+
   const it={caption:document.getElementById('vidCap').value.trim(),
             cat:document.getElementById('vidCat').value, off:false};
-  if(id) it.v=id; else { it.mp4=src; it.poster=document.getElementById('vidPoster').value.trim(); }
-  const key=vidKind==='feed'?'videos':'ads';
-  if(vidIdx>=0){ it.off=!!TV[key][vidIdx].off; TV[key][vidIdx]=it; } else TV[key].push(it);
-  tvDirty=true; closeVid(); renderTV();
-  toast(vidIdx>=0?'Ролик изменён — не забудьте сохранить':'Ролик добавлен — не забудьте сохранить');
+
+  btn.disabled=true;
+  try{
+    if(vidFile){
+      btn.textContent='Загружаю…';
+      let url='';
+      try{
+        url=await uploadOwn(vidFile,vidProgress);
+      }catch(e1){
+        if(!e1.absent) throw e1;
+        if(!cloudReady()){
+          vidProgress(-1);
+          if(!confirm('Чтобы грузить видео с телефона, нужно один раз подключить бесплатное хранилище. Настроить сейчас?')){
+            btn.disabled=false; btn.textContent=vidIdx>=0?'Сохранить':'Добавить'; return;
+          }
+          setupStorage();
+          if(!cloudReady()){ btn.disabled=false; btn.textContent=vidIdx>=0?'Сохранить':'Добавить'; return; }
+        }
+        url=await uploadCloud(vidFile,vidProgress);
+      }
+      it.mp4=url;
+      it.poster=document.getElementById('vidPoster').value.trim()||cloudPoster(url);
+    } else {
+      const id=ytId(src), mp4=isMp4(src);
+      if(!id&&!mp4){ toast('Не разобрал ссылку. Нужен YouTube или прямая ссылка на mp4'); return; }
+      if(id) it.v=id;
+      else { it.mp4=src; it.poster=document.getElementById('vidPoster').value.trim()||cloudPoster(src); }
+    }
+
+    const key=vidKind==='feed'?'videos':'ads';
+    if(vidIdx>=0){ it.off=!!TV[key][vidIdx].off; TV[key][vidIdx]=it; } else TV[key].push(it);
+    renderTV();
+    btn.textContent='Сохраняю…';
+    const ok=await tryPut('/kv/'+TV_KEY,Object.assign({},TV,{every:TV.every}));
+    closeVid();
+    toast(ok?'Ролик добавлен и уже виден на витрине':'Ролик добавлен, но не сохранился — нажмите «Сохранить и опубликовать»');
+    tvDirty=!ok;
+  }catch(e){
+    toast('Не получилось: '+(e.message||e));
+  }finally{
+    btn.disabled=false; btn.textContent=vidIdx>=0?'Сохранить':'Добавить';
+    vidProgress(-1); vidFile=null;
+  }
 }
 
 async function saveTV(){
