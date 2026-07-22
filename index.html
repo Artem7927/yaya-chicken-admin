@@ -1215,10 +1215,18 @@ function uploadCloud(file,onProg){
     xhr.timeout=300000;
     xhr.upload.onprogress=e=>{ if(e.lengthComputable&&onProg) onProg(e.loaded/e.total); };
     xhr.onload=()=>{
-      try{ const d=JSON.parse(xhr.responseText);
-           if(d.secure_url) resolve(d.secure_url);
-           else reject(new Error(d.error&&d.error.message?d.error.message:'Хранилище отклонило файл')); }
-      catch(e){ reject(new Error('Хранилище ответило непонятно — проверьте Cloud name и preset')); }
+      let d={}; try{ d=JSON.parse(xhr.responseText||'{}'); }catch(e){}
+      if(d.secure_url) return resolve(d.secure_url);
+      const raw=(d.error&&d.error.message)||('код '+xhr.status);
+      let msg=raw, cfg=false;
+      if(/unknown api key|invalid cloud|cloud_name/i.test(raw)){
+        msg='Неверный Cloud name — возьмите его на Dashboard в Cloudinary'; cfg=true;
+      } else if(/preset/i.test(raw)){
+        msg='Пресета «'+MEDIA_PRESET+'» нет или он не Unsigned'; cfg=true;
+      } else if(/file size|too large|maximum/i.test(raw)){
+        msg='Ролик слишком большой для бесплатного тарифа — снимите короче';
+      }
+      const er=new Error(msg); er.cfg=cfg; reject(er);
     };
     xhr.onerror=()=>reject(new Error('Нет связи с хранилищем'));
     xhr.ontimeout=()=>reject(new Error('Загрузка идёт слишком долго — проверьте интернет'));
@@ -1324,6 +1332,7 @@ async function saveVid(){
     tvDirty=!ok;
   }catch(e){
     vidSay('Не получилось: '+(e.message||e),true);
+    if(e.cfg){ cfgPending=true; openCfg(); }
   }finally{
     btn.disabled=false; btn.textContent=vidIdx>=0?'Сохранить':'Добавить';
   }
