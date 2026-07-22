@@ -448,7 +448,8 @@ button:disabled{opacity:.45}
     </div>
 
     <div id="rdSecReq" style="display:none">
-      <div class="hint">Здесь появляются заявки от покупателей. Запишите поздравление голосом на диктофон телефона, потом нажмите «Поставить в эфир» — файл подставится в расписание.</div>
+      <div class="hint">Здесь появляются заявки от покупателей. Запишите поздравление голосом на диктофон телефона, потом нажмите «Поставить в эфир» — файл подставится в расписание. Список обновляется сам каждые 15 секунд.</div>
+      <button class="addwide" onclick="loadReq()">Обновить список</button>
       <div id="rdReqList"></div>
     </div>
   </section>
@@ -1485,7 +1486,7 @@ let RADIO={videoId:'2Hz-3imnsWc',title:'YaYa',off:false,greetings:[]}, rdLoaded=
 async function loadRadio(){
   rdLoaded=true;
   try{
-    const j=await api('/kv/'+RADIO_KEY);
+    const j=await api('/kv/'+RADIO_KEY+'?_='+Date.now());
     if(j.value&&typeof j.value==='object') RADIO=Object.assign(RADIO,j.value);
   }catch(e){}
   if(!Array.isArray(RADIO.greetings)) RADIO.greetings=[];
@@ -1493,8 +1494,8 @@ async function loadRadio(){
      браузер их не проигрывает и в эфире получается тишина.        */
   RADIO.greetings.forEach(function(g){ if(g&&g.audio) g.audio=audioDeliverable(g.audio); });
   try{
-    const j=await api('/kv/'+GREET_REQ_KEY);
-    if(Array.isArray(j.value)) GREQ=j.value;
+    const j=await api('/kv/'+GREET_REQ_KEY+'?_='+Date.now());
+    const l=reqList(j.value); if(l) GREQ=l;
   }catch(e){}
   document.getElementById('rdUrl').value=RADIO.videoId||'';
   document.getElementById('rdTitle').value=RADIO.title||'YaYa';
@@ -1507,6 +1508,7 @@ function rdSec(sec,btn){
   document.getElementById('rdSecWave').style.display =sec==='wave' ?'':'none';
   document.getElementById('rdSecGreet').style.display=sec==='greet'?'':'none';
   document.getElementById('rdSecReq').style.display  =sec==='req'  ?'':'none';
+  if(sec==='req') loadReq(true);
 }
 function rdChanged(){
   const t=document.getElementById('rdTitle').value.trim()||'YaYa';
@@ -1657,7 +1659,7 @@ async function saveGreet(){
     const ok=await putRadioChecked();
     if(ok&&grReq>=0&&GREQ[grReq]){        /* заявку закрываем только после успеха */
       GREQ[grReq].status='done';
-      await tryPut('/kv/'+GREET_REQ_KEY,GREQ); renderReq();
+      await saveReq();
     }
     grReq=-1;
     closeGreet();
@@ -1690,6 +1692,46 @@ async function saveGreetings(){
 }
 
 /* ── Заявки от покупателей ── */
+/* Список мог прийти массивом или обёрткой — принимаем оба вида */
+function reqList(v){
+  if(Array.isArray(v)) return v;
+  if(v&&Array.isArray(v.value)) return v.value;
+  if(v&&Array.isArray(v.requests)) return v.requests;
+  return null;
+}
+let REQ_DEL=[];
+/* Раньше заявки читались один раз при первом заходе в раздел: витрина
+   присылала новую, а в кабинете так и висело «Заявок пока нет».
+   Теперь список обновляется сам, пока открыт экран радио.        */
+async function loadReq(silent){
+  try{
+    const j=await api('/kv/'+GREET_REQ_KEY+'?_='+Date.now());
+    const l=reqList(j.value);
+    if(l){ GREQ=l.filter(function(r){return r&&REQ_DEL.indexOf(r.id)<0;}); renderReq(); }
+    if(!silent) toast(GREQ.length?('Заявок: '+GREQ.length):'Заявок пока нет');
+  }catch(e){ if(!silent) toast('Не получилось обновить — проверьте связь'); }
+}
+setInterval(function(){
+  const s=document.getElementById('s-radio'), r=document.getElementById('rdSecReq');
+  if(s&&r&&s.classList.contains('active')&&r.style.display!=='none') loadReq(true);
+},15000);
+/* Пишем список, предварительно слив его с серверным: иначе заявка,
+   пришедшая пока кабинет был открыт, стиралась нашей записью.     */
+async function saveReq(){
+  try{
+    const j=await api('/kv/'+GREET_REQ_KEY+'?_='+Date.now());
+    const srv=reqList(j.value)||[];
+    const map={};
+    srv.forEach(function(r){ if(r&&r.id) map[r.id]=r; });
+    GREQ.forEach(function(r){ if(r&&r.id) map[r.id]=r; });   /* наши статусы главнее */
+    GREQ=Object.keys(map).map(function(k){return map[k];})
+         .filter(function(r){ return REQ_DEL.indexOf(r.id)<0; })
+         .sort(function(a,b){ return (a.ts||0)-(b.ts||0); });
+  }catch(e){}
+  const ok=await tryPut('/kv/'+GREET_REQ_KEY,GREQ);
+  renderReq();
+  return ok;
+}
 function renderReq(){
   const box=document.getElementById('rdReqList');
   const dot=document.getElementById('rdReqDot');
@@ -1717,7 +1759,8 @@ function reqToAir(i){
 }
 function reqDel(i){
   ask('Удалить заявку?',(GREQ[i]&&GREQ[i].to)||'','Удалить',async function(){
-    GREQ.splice(i,1); await tryPut('/kv/'+GREET_REQ_KEY,GREQ); renderReq();
+    const r=GREQ[i]; if(r&&r.id) REQ_DEL.push(r.id);
+    GREQ.splice(i,1); await saveReq();
   });
 }
 
