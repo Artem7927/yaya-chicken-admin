@@ -1512,6 +1512,128 @@ function loadPrice(){
 }
 
 
+/* ── Экран «Меню»: вкладки категорий и список товаров ────────────────
+   curCat хранит НАЗВАНИЕ открытой категории либо '__all'.            */
+let curCat='__all';
+
+function pickCat(i){
+  curCat=(i<0)?'__all':(MENU[i]?MENU[i].name:'__all');
+  renderMenuTabs(); renderMenu(curCat);
+}
+
+function renderMenuTabs(){
+  const el=document.getElementById('menuTabs'); if(!el) return;
+  let h='<button class="mtab'+(curCat==='__all'?' active':'')+'" onclick="pickCat(-1)">Все</button>';
+  MENU.forEach(function(c,i){
+    const n=(c.items||[]).length;
+    h+='<button class="mtab'+(curCat===c.name?' active':'')+'" onclick="pickCat('+i+')">'
+      +esc(c.emoji||'')+' '+esc(c.name)+(n?' · '+n:'')+'</button>';
+  });
+  el.innerHTML=h;
+}
+
+function renderMenu(cat){
+  if(cat!==undefined) curCat=cat;
+  const box=document.getElementById('menuList'); if(!box) return;
+  let rows='';
+  MENU.forEach(function(c,ci){
+    if(curCat!=='__all' && c.name!==curCat) return;
+    (c.items||[]).forEach(function(it,ii){
+      const ph=it.img
+        ? '<div class="ph" style="background-image:url(\'' + String(it.img).replace(/'/g,'%27') + '\')"></div>'
+        : '<div class="ph">'+esc(c.emoji||'🍽️')+'</div>';
+      rows+='<div class="prod">'+ph+'<div class="pi">'
+          +'<div class="pn">'+esc(it.name)+'</div>'
+          +'<div class="pp">'+fmtNum(it.price)+' ₸</div>'
+          +'<div class="pd">'+(it.desc?esc(it.desc):'состав не заполнен')+'</div>'
+          +'<div class="av '+(it.off?'no':'yes')+'">'+(it.off?'Нет в наличии':'В наличии')+'</div>'
+          +'<div class="vops">'
+            +'<button class="act" onclick="openItem('+ci+','+ii+')">Изменить</button>'
+            +'<button onclick="toggleOff('+ci+','+ii+')">'+(it.off?'Вернуть в продажу':'Убрать из продажи')+'</button>'
+            +'<button class="dng" onclick="delItem('+ci+','+ii+')">Удалить</button>'
+          +'</div></div></div>';
+    });
+  });
+  box.innerHTML=rows||'<div class="empty">Здесь пусто. Нажмите «+ Товар».</div>';
+  renderCatBar();
+  renderFillBar();
+}
+
+/* Панель управления открытой категорией */
+function renderCatBar(){
+  const bar=document.getElementById('catBar'); if(!bar) return;
+  let ci=-1;
+  MENU.forEach(function(c,i){ if(c.name===curCat) ci=i; });
+  if(curCat==='__all'||ci<0){ bar.innerHTML=''; return; }
+  bar.innerHTML='<div class="vops" style="padding:0 16px 10px">'
+    +'<button class="act" onclick="openCat('+ci+')">Переименовать</button>'
+    +'<button class="dng" onclick="delCat('+ci+')">Удалить категорию</button></div>';
+}
+
+async function toggleOff(ci,ii){
+  const it=MENU[ci]&&MENU[ci].items[ii]; if(!it) return;
+  it.off=!it.off;
+  renderMenu(curCat);
+  const ok=await putMenu();
+  toast(ok?(it.off?'Убрали из продажи':'Вернули в продажу'):'Не сохранилось — проверьте связь');
+}
+
+function delItem(ci,ii){
+  const it=MENU[ci]&&MENU[ci].items[ii]; if(!it) return;
+  ask('Удалить товар?',esc(it.name)+' пропадёт из меню и с витрины.','Удалить',async function(){
+    const back=JSON.parse(JSON.stringify(MENU));
+    MENU[ci].items.splice(ii,1);
+    renderMenuTabs(); renderMenu(curCat);
+    const ok=await putMenu();
+    if(ok) toast('Удалено');
+    else { MENU=back; renderMenuTabs(); renderMenu(curCat); toast('Не удалось — проверьте связь'); }
+  });
+}
+
+/* ── Окно категории ── */
+let catIdx=-1;
+function openCat(ci){
+  catIdx=(ci===undefined||ci<0)?-1:ci;
+  const c=(catIdx>=0&&MENU[catIdx])||{};
+  document.getElementById('catTitle').textContent=catIdx>=0?'Изменить категорию':'Новая категория';
+  document.getElementById('catSave').textContent=catIdx>=0?'Сохранить':'Добавить';
+  document.getElementById('catName').value=c.name||'';
+  document.getElementById('catEmoji').value=c.emoji||'';
+  document.getElementById('catModal').classList.add('open');
+}
+function closeCat(){ document.getElementById('catModal').classList.remove('open'); }
+
+async function saveCat(){
+  const name=document.getElementById('catName').value.trim();
+  const emoji=document.getElementById('catEmoji').value.trim()||'🍽️';
+  if(!name){ toast('Впишите название'); return; }
+  let dup=false;
+  MENU.forEach(function(c,i){ if(i!==catIdx&&String(c.name).toLowerCase()===name.toLowerCase()) dup=true; });
+  if(dup){ toast('Такая категория уже есть'); return; }
+  const btn=document.getElementById('catSave'); btn.disabled=true;
+  try{
+    if(catIdx>=0){ MENU[catIdx].name=name; MENU[catIdx].emoji=emoji; }
+    else MENU.push({id:'c'+Date.now(),name:name,emoji:emoji,wide:false,items:[]});
+    curCat=name;
+    renderMenuTabs(); renderMenu(curCat); closeCat();
+    const ok=await putMenu();
+    toast(ok?'Сохранено':'Не сохранилось — нажмите «Сохранить и опубликовать»');
+  } finally { btn.disabled=false; }
+}
+
+function delCat(ci){
+  const c=MENU[ci]; if(!c) return;
+  const n=(c.items||[]).length;
+  ask('Удалить категорию?',esc(c.name)+(n?(' — вместе с ней уйдут '+n+' товар(ов).'):' — она пустая.'),'Удалить',async function(){
+    const back=JSON.parse(JSON.stringify(MENU));
+    MENU.splice(ci,1); curCat='__all';
+    renderMenuTabs(); renderMenu(curCat);
+    const ok=await putMenu();
+    if(ok) toast('Категория удалена');
+    else { MENU=back; renderMenuTabs(); renderMenu(curCat); toast('Не удалось — проверьте связь'); }
+  });
+}
+
 /* ── Окно товара ── */
 function openItem(ci,ii){
   itCatIdx=(ci===undefined||ci<0)?-1:ci;
