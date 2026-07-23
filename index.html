@@ -1298,11 +1298,18 @@ async function loadBanners(){
   bnLoaded=true; bnDirty=false;
   renderBanners(); bnCfgBox();
 }
-/* Напоминание про хранилище — картинки грузятся туда же, куда ролики */
+/* Хранилище баннеру не обязательно: картинка ужимается в браузере и
+   при необходимости ложится прямо в базу. Cloudinary просто разгружает её. */
 function bnCfgBox(){
   const box=document.getElementById('bnCfgBox');
-  if(cloudReady()){ box.innerHTML=''; return; }
-  box.innerHTML='<div class="cfgbox">Чтобы загружать картинки с телефона, подключите хранилище — это делается один раз.'
+  const heavy=Math.round(bnLocalBytes(-1)/1024);
+  if(cloudReady()){
+    box.innerHTML='<div class="cfgbox ok">Хранилище подключено: <b>'+esc(MEDIA_CLOUD)+'</b>. '
+                 +'Картинки уходят туда и не нагружают базу.</div>';
+    return;
+  }
+  box.innerHTML='<div class="cfgbox">Хранилище не подключено — картинки сохраняются прямо в базу. '
+              +'Это работает, но подходит для 3–4 слайдов'+(heavy?(' (сейчас занято '+heavy+' КБ)'):'')+'.'
               +'<button onclick="setupStorage()">Подключить хранилище</button></div>';
 }
 /* Показывается ли баннер прямо сейчас — по датам показа */
@@ -1392,7 +1399,7 @@ function bnFillCats(cur){
 }
 function onSlidePick(e){
   const f=(e.target.files||[])[0]; if(!f) return;
-  if(f.size>10*1024*1024){ toast('Картинка больше 10 МБ — сожмите её'); e.target.value=''; return; }
+  if(f.size>25*1024*1024){ toast('Картинка больше 25 МБ — слишком тяжёлая'); e.target.value=''; return; }
   bnFile=f;
   document.getElementById('bnSrc').value='';
   document.getElementById('bnFileName').textContent=f.name+' · '+(f.size/1048576).toFixed(1)+' МБ';
@@ -1400,11 +1407,14 @@ function onSlidePick(e){
   const img=new Image(), url=URL.createObjectURL(f);
   const note=document.getElementById('bnNote');
   img.onload=function(){
-    const r=img.width/img.height;
-    note.className='upnote on'+(r<1.6||r>3?' err':'');
-    note.textContent=(r<1.6||r>3)
-      ? 'Картинка '+img.width+'×'+img.height+' — на витрине обрежется. Лучше вытянутую, примерно 1200×520'
-      : 'Картинка подходит · '+img.width+'×'+img.height;
+    /* Картинка всё равно будет обрезана по центру под 1344×588,
+       поэтому просто предупреждаем, сколько срежется по краям. */
+    const r=img.width/img.height, target=BN_W/BN_H;
+    note.className='upnote on';
+    note.textContent=Math.abs(r-target)<0.25
+      ? 'Подойдёт целиком · '+img.width+'×'+img.height
+      : (r>target ? 'Обрежем по бокам · '+img.width+'×'+img.height
+                  : 'Обрежем сверху и снизу · '+img.width+'×'+img.height);
     URL.revokeObjectURL(url);
   };
   img.onerror=function(){ note.className='upnote on err'; note.textContent='Не похоже на картинку'; };
@@ -1414,6 +1424,40 @@ function bnProgress(p){
   const w=document.getElementById('bnProg'), b=w.querySelector('i');
   if(p<0){ w.className='uprog'; return; }
   w.className='uprog on'; b.style.width=Math.round(p*100)+'%';
+}
+/* Готовим картинку прямо в браузере: обрезаем по центру под формат
+   витрины (1344×588) и сжимаем в JPEG. Из 2 МБ получается 200–300 КБ,
+   поэтому баннер можно хранить прямо в базе, без Cloudinary.       */
+const BN_W=1344, BN_H=588;
+function bnFit(file){
+  return new Promise(function(res,rej){
+    const url=URL.createObjectURL(file), img=new Image();
+    img.onload=function(){
+      try{
+        const c=document.createElement('canvas'); c.width=BN_W; c.height=BN_H;
+        const g=c.getContext('2d');
+        const r=Math.max(BN_W/img.width,BN_H/img.height);   /* заполняем без полей */
+        const w=img.width*r, h=img.height*r;
+        g.drawImage(img,(BN_W-w)/2,(BN_H-h)/2,w,h);
+        URL.revokeObjectURL(url);
+        c.toBlob(function(b){
+          if(!b) return rej(new Error('не удалось обработать картинку'));
+          const fr=new FileReader();
+          fr.onload=function(){ res({blob:b, dataUrl:String(fr.result), kb:Math.round(b.size/1024)}); };
+          fr.onerror=function(){ rej(new Error('не удалось прочитать картинку')); };
+          fr.readAsDataURL(b);
+        },'image/jpeg',0.85);
+      }catch(e){ rej(e); }
+    };
+    img.onerror=function(){ URL.revokeObjectURL(url); rej(new Error('это не картинка')); };
+    img.src=url;
+  });
+}
+/* Сколько весят слайды, которые лежат прямо в базе */
+function bnLocalBytes(skip){
+  return BANNERS.slides.reduce(function(n,s,i){
+    return n+((i!==skip&&s&&/^data:/.test(s.img||''))?s.img.length:0);
+  },0);
 }
 async function saveSlide(){
   const btn=document.getElementById('bnSave');
@@ -1433,19 +1477,35 @@ async function saveSlide(){
   btn.disabled=true;
   try{
     if(bnFile){
+      btn.textContent='Готовлю…';
+      const fit=await bnFit(bnFile);
+      const small=new File([fit.blob],'banner.jpg',{type:'image/jpeg'});
       btn.textContent='Загружаю…';
-      try{ s.img=await uploadOwn(bnFile,bnProgress); }
+      let cloudMsg='';
+      try{ s.img=await uploadOwn(small,bnProgress); }
       catch(e1){
         if(!e1.absent) throw e1;
-        if(!cloudReady()){ bnProgress(-1); cfgPending=true; openCfg();
-          toast('Сначала подключите хранилище'); return; }
-        s.img=await uploadCloud(bnFile,bnProgress,'image');
+        if(cloudReady()){
+          try{ s.img=await uploadCloud(small,bnProgress,'image'); }
+          catch(e2){ s.img=''; cloudMsg=e2.message||''; }
+        }
+      }
+      if(!s.img){
+        /* Хранилища нет или оно не ответило — кладём картинку в базу.
+           Она уже сжата, так что это надёжнее, чем ничего.          */
+        bnProgress(-1);
+        if(bnLocalBytes(bnIdx>=0?bnIdx:-1)+fit.dataUrl.length>1400000){
+          throw new Error('слишком много тяжёлых слайдов. Удалите один или подключите хранилище');
+        }
+        s.img=fit.dataUrl;
+        toast(cloudMsg?('Хранилище не ответило — слайд сохранён в базу ('+fit.kb+' КБ)')
+                      :('Слайд сохранён в базу · '+fit.kb+' КБ'));
       }
     }
     if(!s.img){ toast('Картинка не загрузилась'); return; }
     if(bnIdx>=0) BANNERS.slides[bnIdx]=s; else BANNERS.slides.push(s);
     bnDirty=true; renderBanners(); closeSlide();
-    toast('Слайд добавлен — нажмите «Сохранить и опубликовать»');
+    setTimeout(function(){ toast('Не забудьте «Сохранить и опубликовать»'); },1600);
   }catch(e){
     toast('Не получилось: '+(e.message||e));
     if(e.cfg){ cfgPending=true; openCfg(); }
@@ -1467,7 +1527,7 @@ async function saveBanners(){
   }
   const ok=await tryPut('/kv/'+BAN_KEY,BANNERS);
   if(ok) bnDirty=false;
-  renderBanners();
+  renderBanners(); bnCfgBox();
   toast(ok?'Баннер опубликован — витрина подхватит за полминуты':'Не сохранилось — проверьте связь');
 }
 
@@ -1702,7 +1762,12 @@ function uploadCloud(file,onProg,kind){
       }
       const er=new Error(msg); er.cfg=cfg; reject(er);
     };
-    xhr.onerror=()=>reject(new Error('Нет связи с хранилищем'));
+    xhr.onerror=()=>{
+      /* Чаще всего это опечатка в Cloud name: браузер стучится по адресу,
+         которого нет. Называем имя, чтобы было видно, что проверять.   */
+      const er=new Error('Не отвечает хранилище «'+MEDIA_CLOUD+'». Проверьте Cloud name в настройках и интернет');
+      er.cfg=true; reject(er);
+    };
     xhr.ontimeout=()=>reject(new Error('Загрузка идёт слишком долго — проверьте интернет'));
     xhr.send(fd);
   });
