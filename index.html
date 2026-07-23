@@ -403,6 +403,7 @@ button:disabled{opacity:.45}
     </header>
     <div class="mtabs" id="menuTabs"></div>
     <div id="catBar"></div>
+    <div id="fillBar"></div>
     <div id="menuList"><div class="loading"><div class="spinner"></div>Загружаю меню…</div></div>
     <button class="savebar" onclick="saveMenu()">Сохранить и опубликовать</button>
   </section>
@@ -1286,12 +1287,12 @@ let menuDirty=false, itIdx=-1, itCatIdx=-1, itFile=null, itImg='';
 
 async function loadMenu(){
   menuLoaded=true;
-  let got=null;
+  let got=null, fromBase=false;
   try{
     const j=await api('/kv/'+MENU_KEY+'?_='+Date.now());
     const v=j.value;
-    if(v&&Array.isArray(v.categories)&&v.categories.length) got=v.categories;
-    else if(Array.isArray(v)&&v.length) got=v;
+    if(v&&Array.isArray(v.categories)&&v.categories.length){ got=v.categories; fromBase=true; }
+    else if(Array.isArray(v)&&v.length){ got=v; fromBase=true; }
   }catch(e){}
   if(!got){                          /* первый запуск — берём меню витрины */
     let data=null;
@@ -1307,146 +1308,209 @@ async function loadMenu(){
                       desc:it.desc||'', img:it.img||'', off:!!it.off};
             })};
   });
-  const added=ensureCats();
+  const added=fromBase?0:fillFromBase();   /* меню из базы не трогаем: что удалили — то удалено */
   menuDirty=false;
   renderMenuTabs(); renderMenu(curCat);
   if(added) putMenu();          /* новые категории сразу уходят на витрину */
 }
-/* Добавляет в меню категории из BASE_CATS, которых ещё нет */
-function ensureCats(){
-  const have=MENU.map(c=>String(c.name||'').trim().toLowerCase());
+/* Прайс заведения — тот же, что лежит в menu.js витрины: категории,
+   позиции, цены и состав. Кабинет берёт его за основу, когда меню в
+   базе ещё пустое, и по кнопке «Загрузить из прайса» дозаливает то,
+   чего не хватает. Фото у заведённых товаров при этом не трогаем. */
+const BASE_MENU=[
+  {id:'sets',name:'Сеты',emoji:'🎁',wide:true,items:[
+    {id:'s1',name:'SET (Большой)',price:10290,desc:'крылышки 20 шт, ножки 30 шт, фри 2л, Coca Cola 2л'},
+    {id:'s2',name:'SET (Средний)',price:5890,desc:'крылышки 30 шт'},
+    {id:'s3',name:'КОМБО ПИЦЦА',price:14390,desc:'Пицца Ранч, Пицца 4 сыра, пицца на палочке, фри 2л, Coca Cola 2л'},
+    {id:'s4',name:'КОМБО СЕМЕЙНЫЙ',price:16390,desc:'крылышки 30 шт, фри 2л, Coca Cola 2л, соус'},
+    {id:'s5',name:'ДЕТСКОЕ МЕНЮ',price:2690,desc:'наггетсы 7 шт, фри, сок 0.2л, крылышки 2 шт'}
+  ]},
+  {id:'wings',name:'Крылышки и стрипсы',emoji:'🍗',wide:false,items:[
+    {id:'w6',name:'Крылышки 30 шт',price:5890,desc:'30 штук'},
+    {id:'w7',name:'Крылышки 20 шт',price:4490,desc:'20 штук'},
+    {id:'w8',name:'Крылышки 8 шт',price:2390,desc:'8 штук'},
+    {id:'w9',name:'Стрипсы 20 шт',price:4790,desc:'стрипсы 20 штук'},
+    {id:'w10',name:'Стрипсы 14 шт',price:3390,desc:'стрипсы 14 штук'},
+    {id:'w11',name:'Стрипсы 7 шт',price:2090,desc:'стрипсы 7 штук'}
+  ]},
+  {id:'snacks',name:'Закуски',emoji:'🍟',wide:false,items:[
+    {id:'s12',name:'Наггетсы 7 шт',price:990,desc:'наггетсы 7 штук'},
+    {id:'s13',name:'Сырные палочки 5 шт',price:1790,desc:'сырные палочки 5 штук'},
+    {id:'s14',name:'Фри',price:790,desc:'картошка фри'}
+  ]},
+  {id:'burgers',name:'Бургеры',emoji:'🍔',wide:false,items:[
+    {id:'b15',name:'Гамбургер говяжий',price:1490,desc:'бургер из говядины'},
+    {id:'b16',name:'Гамбургер куриный',price:1390,desc:'бургер из курицы'},
+    {id:'b17',name:'Чизбургер говяжий',price:1590,desc:'чизбургер из говядины'},
+    {id:'b18',name:'Чизбургер куриный',price:1490,desc:'чизбургер из курицы'},
+    {id:'b19',name:'Гамбургер x2 говяжий',price:1690,desc:'двойной бургер из говядины'},
+    {id:'b20',name:'Гамбургер x2 куриный',price:1690,desc:'двойной бургер из курицы'},
+    {id:'b21',name:'Чизбургер x2 говяжий',price:1890,desc:'двойной чизбургер из говядины'},
+    {id:'b22',name:'Чизбургер x2 куриный',price:1890,desc:'двойной чизбургер из курицы'},
+    {id:'b23',name:'Гамбургер MIX',price:1790,desc:'смешанный бургер говядина+курица'},
+    {id:'b24',name:'Чизбургер MIX',price:1990,desc:'смешанный чизбургер говядина+курица'},
+    {id:'b25',name:'Гамбургер x2 MIX',price:2090,desc:'двойной смешанный бургер'},
+    {id:'b26',name:'КОМБО ЧИЗБУРГЕР (Говяжий)',price:2790,desc:'бургер из говядины + фри + Coca Cola'},
+    {id:'b27',name:'КОМБО ЧИЗБУРГЕР (Куриный)',price:2690,desc:'бургер из курицы + фри + Coca Cola'},
+    {id:'b28',name:'БИГ КОМБО (Говяжий)',price:9990,desc:'бургер из говядины + крылышки 3 шт + фри + Coca Cola'},
+    {id:'b29',name:'БИГ КОМБО (Куриный)',price:9790,desc:'бургер из курицы + крылышки 3 шт + фри + Coca Cola'},
+    {id:'b30',name:'КОМБО НА ДВОИХ (Говяжий)',price:6590,desc:'бургер из говядины + крылышки 8 шт + фри + соус + Coca Cola'},
+    {id:'b31',name:'КОМБО НА ДВОИХ (Куриный)',price:6390,desc:'бургер из курицы + крылышки 8 шт + фри + соус + Coca Cola'}
+  ]},
+  {id:'doners',name:'Донеры',emoji:'🌯',wide:false,items:[
+    {id:'d32',name:'Донер куриный',price:1590,desc:'донер из курицы'},
+    {id:'d33',name:'Донер говяжий',price:1790,desc:'донер из говядины'},
+    {id:'d34',name:'Донер MIX',price:1690,desc:'смешанный донер'},
+    {id:'d35',name:'Багет куриный',price:1790,desc:'багет с курицей'},
+    {id:'d36',name:'Багет говяжий',price:1990,desc:'багет с говядиной'},
+    {id:'d37',name:'Багет MIX',price:1890,desc:'смешанный багет'},
+    {id:'d38',name:'ДОНЕР КОМБО (Говяжий)',price:2790,desc:'донер из говядины + фри + Coca Cola 0.5л'},
+    {id:'d39',name:'ДОНЕР КОМБО (Куриный)',price:2790,desc:'донер из курицы + фри + Coca Cola 0.5л'},
+    {id:'d40',name:'ДОНЕР MIX КОМБО',price:2790,desc:'смешанный донер + фри + Coca Cola 0.5л'},
+    {id:'d41',name:'КОМБО БАГЕТ (Куриный)',price:2790,desc:'багет с курицей + фри + Coca/Soda 0.5л'},
+    {id:'d42',name:'КОМБО БАГЕТ (Говяжий)',price:2990,desc:'багет с говядиной + фри + Coca/Soda 0.5л'},
+    {id:'d43',name:'БАГЕТ MIX КОМБО',price:2890,desc:'смешанный багет + фри + Coca/Soda 0.5л'},
+    {id:'d44',name:'КОМБО ЕКІБАСТҰЗ (Говяжий донер)',price:7090,desc:'донер из говядины 2 шт + крылышки 8 шт + фри + Coca Cola 0.5л'},
+    {id:'d45',name:'КОМБО НА ДВОИХ (Куриный донер)',price:6890,desc:'донер из курицы 2 шт + крылышки 8 шт + фри + Coca Cola 0.5л'}
+  ]},
+  {id:'pizza',name:'Пицца',emoji:'🍕',wide:false,items:[
+    {id:'p46',name:'Пицца YaYa',price:2990,desc:'фирменная пицца YaYa'},
+    {id:'p47',name:'Пицца Ранч',price:2990,desc:'пицца Ранч'},
+    {id:'p48',name:'Пицца Филадельфия',price:3290,desc:'пицца Филадельфия'},
+    {id:'p49',name:'Пицца BBQ',price:3190,desc:'пицца BBQ'},
+    {id:'p50',name:'Пицца Фаро',price:3190,desc:'пицца Фаро'},
+    {id:'p51',name:'Пицца 4 сыра',price:2990,desc:'пицца четыре сыра'},
+    {id:'p52',name:'Пицца Курица с грибами',price:2690,desc:'пицца с курицей и грибами'},
+    {id:'p53',name:'Пицца Пепперони',price:2790,desc:'пицца пепперони'},
+    {id:'p54',name:'Пицца Маргарита',price:2290,desc:'пицца маргарита'},
+    {id:'p55',name:'Пицца Маргарита-Пепперони',price:2990,desc:'пицца маргарита пепперони'},
+    {id:'p56',name:'Пицца Мексиканская острая',price:2990,desc:'острая мексиканская пицца'},
+    {id:'p57',name:'Пицца 4 сезона',price:2690,desc:'пицца четыре сезона'},
+    {id:'p58',name:'Сладкая пицца Банан-Банан',price:2690,desc:'сладкая пицца с бананом'},
+    {id:'p59',name:'КОМБО ПИЦЦА',price:14390,desc:'Пицца Ранч + Пицца 4 сыра + пицца на палочке + фри 2л + Coca Cola 2л'}
+  ]},
+  {id:'bliny',name:'Блины',emoji:'🥞',wide:false,items:[
+    {id:'b60',name:'Блин Творожная вишня',price:890,desc:'сладкий блин с творогом и вишней'},
+    {id:'b61',name:'Блин Клубничный джем',price:890,desc:'сладкий блин с клубничным джемом'},
+    {id:'b62',name:'Блин Медовый орех',price:590,desc:'сладкий блин с медом и орехами'},
+    {id:'b63',name:'Блин Шоколад',price:590,desc:'сладкий блин с шоколадом'},
+    {id:'b64',name:'Блин Клубничный',price:590,desc:'сладкий блин с клубникой'},
+    {id:'b65',name:'Блин Тропикано',price:1190,desc:'тропический сладкий блин'},
+    {id:'b66',name:'Блин Творожный',price:590,desc:'блин с творогом'},
+    {id:'b67',name:'Блин Банановое наслаждение',price:890,desc:'сладкий блин с бананом'},
+    {id:'b68',name:'Блин с маслом',price:200,desc:'сытный блин с маслом'},
+    {id:'b69',name:'Блин со сметаной',price:300,desc:'сытный блин со сметаной'},
+    {id:'b70',name:'Блин с сыром',price:690,desc:'сытный блин с сыром'},
+    {id:'b71',name:'Блин с яйцом',price:790,desc:'сытный блин с яйцом'},
+    {id:'b72',name:'Блин с мясом',price:1150,desc:'сытный блин с мясом'},
+    {id:'b73',name:'Блин с курицей',price:1150,desc:'сытный блин с курицей'},
+    {id:'b74',name:'Блин деревенский',price:1250,desc:'деревенский сытный блин'},
+    {id:'b75',name:'Блин с грибами',price:1250,desc:'сытный блин с грибами'},
+    {id:'b76',name:'Блин дуэт',price:1090,desc:'блин дуэт'},
+    {id:'b77',name:'Блин Курочка Ряба',price:1090,desc:'блин Курочка Ряба'},
+    {id:'b78',name:'Блин гурман',price:1150,desc:'блин гурман'}
+  ]},
+  {id:'drinks',name:'Напитки',emoji:'🥤',wide:false,items:[
+    {id:'d79',name:'Coca Cola 1л',price:790,desc:'Coca Cola 1 литр'},
+    {id:'d80',name:'Coca Cola 0.5л',price:490,desc:'Coca Cola 0.5 литра'},
+    {id:'d81',name:'Sprite 1л',price:790,desc:'Sprite 1 литр'},
+    {id:'d82',name:'Sprite 0.5л',price:490,desc:'Sprite 0.5 литра'},
+    {id:'d83',name:'Fanta 1л',price:790,desc:'Fanta 1 литр'},
+    {id:'d84',name:'Fanta 0.5л',price:490,desc:'Fanta 0.5 литра'},
+    {id:'d85',name:'Fuse Tea 1л',price:790,desc:'Fuse Tea 1 литр'},
+    {id:'d86',name:'Fuse Tea 0.5л',price:490,desc:'Fuse Tea 0.5 литра'}
+  ]},
+  {id:'coffee',name:'Кофе',emoji:'☕',wide:false,items:[
+    {id:'c87',name:'Американо',price:890,desc:'американо 0.2/0.3/0.4мл'},
+    {id:'c88',name:'Капучино',price:990,desc:'капучино'},
+    {id:'c89',name:'Латте',price:1190,desc:'латте'},
+    {id:'c90',name:'Латте Маккиато',price:1190,desc:'латте маккиато'},
+    {id:'c91',name:'Горячий шоколад',price:1290,desc:'горячий шоколад'}
+  ]},
+  {id:'cocktails',name:'Коктейли',emoji:'🍦',wide:false,items:[
+    {id:'c92',name:'Коктейль молочный',price:1190,desc:'молочный коктейль'},
+    {id:'c93',name:'Коктейль шоколадный',price:1290,desc:'шоколадный коктейль'},
+    {id:'c94',name:'Коктейль клубничный',price:1290,desc:'клубничный коктейль'},
+    {id:'c95',name:'Коктейль Сникерс',price:1290,desc:'коктейль Сникерс'},
+    {id:'c96',name:'Коктейль Баунти',price:1290,desc:'коктейль Баунти'},
+    {id:'c97',name:'Коктейль Орео',price:1290,desc:'коктейль Орео'},
+    {id:'c98',name:'Коктейль банановый',price:1290,desc:'банановый коктейль'}
+  ]},
+  {id:'mohito',name:'Мохито',emoji:'🍹',wide:false,items:[
+    {id:'m99',name:'Мохито Классик 1л',price:1390,desc:'мохито классик 1 литр'},
+    {id:'m100',name:'Мохито Клубника 1л',price:1490,desc:'мохито клубника 1 литр'},
+    {id:'m101',name:'Мохито Малина 1л',price:1490,desc:'мохито малина 1 литр'}
+  ]},
+  {id:'lemonade',name:'Лимонад',emoji:'🍋',wide:false,items:[
+    {id:'l102',name:'Лимонад Классик 1л',price:1390,desc:'лимонад классик 1 литр'},
+    {id:'l103',name:'Лимонад Цитрус 1л',price:1490,desc:'лимонад цитрус 1 литр'},
+    {id:'l104',name:'Лимонад Киви 1л',price:1490,desc:'лимонад киви 1 литр'},
+    {id:'l105',name:'Лимонад Клубника-Маракуйя 1л',price:1590,desc:'лимонад клубника-маракуйя 1 литр'},
+    {id:'l106',name:'Лимонад Киви-Маракуйя 1л',price:1590,desc:'лимонад киви-маракуйя 1 литр'},
+    {id:'l107',name:'Лимонад Ягодный 1л',price:1490,desc:'лимонад ягодный 1 литр'}
+  ]},
+  {id:'sauces',name:'Соусы',emoji:'🫙',wide:false,items:[
+    {id:'s108',name:'Соус сырный',price:150,desc:'сырный соус'},
+    {id:'s109',name:'Соус томатный',price:150,desc:'томатный соус'},
+    {id:'s110',name:'Соус халапеньо',price:150,desc:'соус халапеньо'},
+    {id:'s111',name:'Сырный кетчуп',price:150,desc:'сырный кетчуп'}
+  ]}
+];
+const DEMO_MENU=BASE_MENU;
+
+/* Дозаливает из прайса то, чего в меню ещё нет: сначала категории,
+   потом позиции внутри них. Существующее не меняем и не удаляем.
+   Возвращает, сколько позиций добавили. */
+function fillFromBase(){
   let added=0;
-  BASE_CATS.forEach(function(b){
-    if(have.indexOf(b.name.toLowerCase())<0){
-      MENU.push({id:b.id,name:b.name,emoji:b.emoji,wide:false,items:[]});
+  BASE_MENU.forEach(function(bc){
+    let c=MENU.filter(function(x){ return String(x.name).trim().toLowerCase()===bc.name.toLowerCase(); })[0];
+    if(!c){ c={id:bc.id,name:bc.name,emoji:bc.emoji,wide:!!bc.wide,items:[]}; MENU.push(c); }
+    (bc.items||[]).forEach(function(bi){
+      const have=(c.items||[]).some(function(i){
+        return String(i.name).trim().toLowerCase()===String(bi.name).trim().toLowerCase(); });
+      if(have) return;
+      c.items.push({id:bi.id||('i'+Date.now()+Math.random().toString(36).slice(2,6)),
+                    name:bi.name, price:Number(bi.price)||0, desc:bi.desc||'', img:'', off:false});
       added++;
-    }
+    });
   });
   return added;
 }
-/* Полный список категорий заведения. Они всегда есть в выпадающем
-   списке окна товара — даже если в базе их ещё нет: недостающие
-   добавляются при загрузке меню. Свои категории можно завести кнопкой
-   «+ Категория» на экране «Меню». */
-const BASE_CATS=[
-  {id:'sets',     name:'Сеты',                emoji:'🎁'},
-  {id:'wings',    name:'Крылышки и стрипсы',  emoji:'🍗'},
-  {id:'snacks',   name:'Закуски',             emoji:'🍟'},
-  {id:'burgers',  name:'Бургеры',             emoji:'🍔'},
-  {id:'doners',   name:'Шаурма и донеры',     emoji:'🌯'},
-  {id:'pizza',    name:'Пицца',               emoji:'🍕'},
-  {id:'bliny',    name:'Блины',               emoji:'🥞'},
-  {id:'combo',    name:'Комбо',               emoji:'🍱'},
-  {id:'drinks',   name:'Напитки',             emoji:'🥤'},
-  {id:'coffee',   name:'Кофе',                emoji:'☕'},
-  {id:'cocktails',name:'Коктейли',            emoji:'🍦'},
-  {id:'mohito',   name:'Мохито',              emoji:'🍹'},
-  {id:'lemonade', name:'Лимонад',             emoji:'🍋'},
-  {id:'sauces',   name:'Соусы',               emoji:'🫙'},
-];
-const DEMO_MENU=BASE_CATS.map(c=>({id:c.id,name:c.name,emoji:c.emoji,items:[]}));
-let curCat='__all';
-function renderMenuTabs(){
-  const cats=['__all'].concat(MENU.map(function(c){return c.name;}));
-  document.getElementById('menuTabs').innerHTML=cats.map(function(c){
-    const val=c==='__all'?'__all':esc(c).replace(/'/g,"\\'");
-    return '<button class="mtab '+(c===curCat?'active':'')+'" onclick="renderMenu(\''+val+'\')">'
-          +(c==='__all'?'Все':esc(c))+'</button>';
-  }).join('');
-}
-function renderMenu(cat){
-  curCat=cat||'__all'; renderMenuTabs();
-  let rows='';
-  MENU.forEach(function(c,ci){
-    if(curCat!=='__all'&&c.name!==curCat) return;
-    (c.items||[]).forEach(function(it,ii){
-      const av=!it.off;
-      rows+='<div class="prod">'
-        +(it.img?'<div class="ph" style="background-image:url(\''+esc(it.img)+'\')"></div>'
-                :'<div class="ph">'+esc(c.emoji||'🍽️')+'</div>')
-        +'<div class="pi"><div class="pn">'+esc(it.name)+'</div>'
-        +(it.desc?'<div class="pd">'+esc(it.desc)+'</div>':'')
-        +'<div class="pp">'+(it.price?fmtNum(it.price)+' ₸':'цена не указана')+'</div>'
-        +'<div class="av '+(av?'yes':'no')+'">'+(av?'В наличии':'Нет в наличии')+'</div>'
-        +'<div class="vops"><button class="act" onclick="openItem('+ci+','+ii+')">Изменить</button>'
-        +'<button class="dng" onclick="delItem('+ci+','+ii+')">Удалить</button></div></div>'
-        +'<button class="sw '+(av?'on':'')+'" onclick="toggleStock('+ci+','+ii+',this)"></button></div>';
+/* Сколько позиций из прайса ещё не заведено */
+function baseMissing(){
+  let n=0;
+  BASE_MENU.forEach(function(bc){
+    const c=MENU.filter(function(x){ return String(x.name).trim().toLowerCase()===bc.name.toLowerCase(); })[0];
+    (bc.items||[]).forEach(function(bi){
+      if(!c) { n++; return; }
+      const have=(c.items||[]).some(function(i){
+        return String(i.name).trim().toLowerCase()===String(bi.name).trim().toLowerCase(); });
+      if(!have) n++;
     });
   });
-  document.getElementById('menuList').innerHTML=rows||'<div class="empty">В категории пусто. Нажмите «+ Товар».</div>';
-  renderCatBar();
+  return n;
 }
-/* Панель управления открытой категорией */
-function renderCatBar(){
-  const bar=document.getElementById('catBar'); if(!bar) return;
-  const ci=MENU.findIndex(function(c){return c.name===curCat;});
-  if(curCat==='__all'||ci<0){ bar.innerHTML=''; return; }
-  const cnt=(MENU[ci].items||[]).length;
-  bar.innerHTML='<div class="vops" style="padding:0 16px 10px">'
-    +'<span style="flex:1;font-size:12.5px;font-weight:800;color:var(--muted);align-self:center">'
-    +esc(MENU[ci].emoji||'🍽️')+' '+esc(MENU[ci].name)+' · товаров: '+cnt+'</span>'
-    +'<button class="act" onclick="openCat('+ci+')">Переименовать</button>'
-    +'<button class="dng" onclick="delCat('+ci+')">Удалить категорию</button></div>';
+/* Плашка «загрузить из прайса» — показывается, только если чего-то нет */
+function renderFillBar(){
+  const el=document.getElementById('fillBar'); if(!el) return;
+  const n=baseMissing();
+  el.innerHTML=n?('<div class="cfgbox">В прайсе есть ещё <b>'+n+'</b> позиций, которых нет в меню. '
+    +'Загрузим их с ценами и составом — фото добавите сами.'
+    +'<button onclick="loadPrice()">Загрузить из прайса</button></div>'):'';
+}
+function loadPrice(){
+  const n=baseMissing();
+  ask('Загрузить из прайса?','Добавим '+n+' позиций с ценами и составом. '
+     +'Что уже заведено — останется как есть, вместе с фото.','Загрузить',async function(){
+    const back=JSON.parse(JSON.stringify(MENU));
+    fillFromBase(); renderMenu(curCat);
+    const ok=await putMenu();
+    if(ok) toast('Меню загружено — витрина обновится за пару минут');
+    else { MENU=back; renderMenu(curCat); toast('Не сохранилось — проверьте связь'); }
+  });
 }
 
-/* ── Окно категории ── */
-let catIdx=-1;
-function openCat(ci){
-  catIdx=(ci===undefined||ci<0)?-1:ci;
-  const c=(catIdx>=0&&MENU[catIdx])||{};
-  document.getElementById('catTitle').textContent=catIdx>=0?'Изменить категорию':'Новая категория';
-  document.getElementById('catSave').textContent=catIdx>=0?'Сохранить':'Добавить';
-  document.getElementById('catName').value=c.name||'';
-  document.getElementById('catEmoji').value=c.emoji||'';
-  document.getElementById('catModal').classList.add('open');
-}
-function closeCat(){ document.getElementById('catModal').classList.remove('open'); }
-async function saveCat(){
-  const name=document.getElementById('catName').value.trim();
-  const emoji=document.getElementById('catEmoji').value.trim()||'🍽️';
-  if(!name){ toast('Впишите название'); return; }
-  const dup=MENU.findIndex(function(c,i){return i!==catIdx&&String(c.name).toLowerCase()===name.toLowerCase();});
-  if(dup>=0){ toast('Такая категория уже есть'); return; }
-  const btn=document.getElementById('catSave'); btn.disabled=true;
-  try{
-    if(catIdx>=0){ MENU[catIdx].name=name; MENU[catIdx].emoji=emoji; curCat=name; }
-    else { MENU.push({id:'c'+Date.now(),name:name,emoji:emoji,wide:false,items:[]}); curCat=name; }
-    renderMenu(curCat); closeCat();
-    const ok=await putMenu();
-    toast(ok?'Сохранено':'Не сохранилось — нажмите «Сохранить и опубликовать»');
-  } finally { btn.disabled=false; }
-}
-function delCat(ci){
-  const c=MENU[ci]; if(!c) return;
-  const cnt=(c.items||[]).length;
-  ask('Удалить категорию?',esc(c.name)+(cnt?(' — вместе с ней уйдут '+cnt+' товар(ов).'):' — она пустая.'),'Удалить',async function(){
-    const back=JSON.parse(JSON.stringify(MENU));
-    MENU.splice(ci,1); curCat='__all'; renderMenu(curCat);
-    const ok=await putMenu();
-    if(ok) toast('Категория удалена');
-    else { MENU=back; renderMenu(curCat); toast('Не удалось — проверьте связь'); }
-  });
-}
-async function toggleStock(ci,ii,btn){
-  const it=MENU[ci]&&MENU[ci].items[ii]; if(!it) return;
-  it.off=!it.off; menuDirty=true;
-  const on=!it.off;
-  btn.classList.toggle('on',on);
-  const t=btn.parentElement.querySelector('.av');
-  t.textContent=on?'В наличии':'Нет в наличии'; t.className='av '+(on?'yes':'no');
-  const ok=await putMenu();
-  if(!ok) toast('Не сохранилось — проверьте связь');
-}
-function delItem(ci,ii){
-  const it=MENU[ci]&&MENU[ci].items[ii]; if(!it) return;
-  ask('Удалить товар?',(it.name||'')+' — уберём из меню витрины.','Удалить',async function(){
-    const back=JSON.parse(JSON.stringify(MENU));
-    MENU[ci].items.splice(ii,1); renderMenu(curCat);
-    const ok=await putMenu();
-    if(ok) toast('Удалено');
-    else { MENU=back; renderMenu(curCat); toast('Не удалось — проверьте связь'); }
-  });
-}
 
 /* ── Окно товара ── */
 function openItem(ci,ii){
@@ -1865,7 +1929,7 @@ const TV_KEY='yaya_tv', RADIO_KEY='yaya_radio';
 /* Запасной список категорий — если content.json не прочитался */
 const TV_CATS_FALLBACK=[
   ['sets','Сеты'],['wings','Крылышки'],['snacks','Закуски'],['burgers','Бургеры'],
-  ['doners','Шаурма'],['pizza','Пицца'],['bliny','Блины'],['drinks','Напитки'],
+  ['pizza','Пицца'],['bliny','Блины'],['drinks','Напитки'],
   ['coffee','Кофе'],['cocktails','Коктейли'],['mohito','Мохито'],
   ['lemonade','Лимонады'],['sauces','Соусы']
 ];
