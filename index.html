@@ -1290,7 +1290,9 @@ function ask(title,text,okLabel,cb){
   document.getElementById('askInpWrap').style.display='none';
   const b=document.getElementById('askOk');
   b.textContent=okLabel; askCb=cb;
-  b.onclick=function(){ closeAsk(); if(askCb)askCb(); };
+  /* Действие запоминаем в отдельной переменной: closeAsk() обнуляет askCb,
+     и если брать его после закрытия окна, кнопка «Удалить» ничего не делала. */
+  b.onclick=function(){ const fn=askCb; closeAsk(); if(fn)fn(); };
   document.getElementById('askModal').classList.add('open');
 }
 /* То же окно, но с полем ввода — замена prompt() */
@@ -1301,7 +1303,7 @@ function askInput(title,placeholder,okLabel,cb){
   w.style.display=''; inp.value=''; inp.placeholder=placeholder||'';
   const b=document.getElementById('askOk');
   b.textContent=okLabel; askCb=cb;
-  b.onclick=function(){ const v=inp.value.trim(); if(!v){toast('Заполните поле');return;} closeAsk(); if(askCb)askCb(v); };
+  b.onclick=function(){ const v=inp.value.trim(); if(!v){toast('Заполните поле');return;} const fn=askCb; closeAsk(); if(fn)fn(v); };
   document.getElementById('askModal').classList.add('open');
   setTimeout(function(){inp.focus();},250);
 }
@@ -1594,11 +1596,22 @@ function renderGreet(){
       </div>
     </div>`).join('');
 }
-function greetOff(i){ RADIO.greetings[i].off=!RADIO.greetings[i].off; renderGreet(); toast('Не забудьте сохранить'); }
+async function greetOff(i){
+  if(!RADIO.greetings[i]) return;
+  RADIO.greetings[i].off=!RADIO.greetings[i].off; renderGreet();
+  const ok=await putRadioChecked();
+  toast(ok?(RADIO.greetings[i].off?'Отключено':'Включено'):'Не сохранилось — проверьте связь');
+}
 function greetDel(i){
   const g=RADIO.greetings[i]||{};
-  ask('Удалить поздравление?',(g.name||'Без подписи')+' — уберём из расписания.','Удалить',function(){
-    RADIO.greetings.splice(i,1); renderGreet(); toast('Удалено — нажмите «Сохранить и опубликовать»');
+  ask('Удалить поздравление?',(g.name||'Без подписи')+' — уберём из расписания.','Удалить',async function(){
+    const back=RADIO.greetings.slice();
+    RADIO.greetings.splice(i,1); renderGreet();
+    /* сохраняем сразу: раньше запись оставалась на сервере до тех пор,
+       пока не нажмёшь «Сохранить и опубликовать», и возвращалась обратно */
+    const ok=await putRadioChecked();
+    if(ok) toast('Удалено');
+    else { RADIO.greetings=back; renderGreet(); toast('Не удалось удалить — проверьте связь'); }
   });
 }
 
