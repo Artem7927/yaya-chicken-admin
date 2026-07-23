@@ -396,9 +396,13 @@ button:disabled{opacity:.45}
   <section class="screen" id="s-menu">
     <header class="hd">
       <div class="t">Меню</div>
-      <div class="acts"><button class="btn-line" onclick="openItem(-1)">+ Товар</button></div>
+      <div class="acts">
+        <button class="btn-line" onclick="openCat(-1)">+ Категория</button>
+        <button class="btn-line" onclick="openItem(-1)">+ Товар</button>
+      </div>
     </header>
     <div class="mtabs" id="menuTabs"></div>
+    <div id="catBar"></div>
     <div id="menuList"><div class="loading"><div class="spinner"></div>Загружаю меню…</div></div>
     <button class="savebar" onclick="saveMenu()">Сохранить и опубликовать</button>
   </section>
@@ -441,6 +445,26 @@ button:disabled{opacity:.45}
       <div class="mrow">
         <button class="no" onclick="closeItem()">Отмена</button>
         <button class="ok" id="itSave" onclick="saveItem()">Добавить</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ОКНО КАТЕГОРИИ -->
+  <div class="modal" id="catModal" onclick="if(event.target===this)closeCat()">
+    <div class="sheet">
+      <div class="mt" id="catTitle">Новая категория</div>
+      <div class="fld">
+        <label>Название</label>
+        <input id="catName" maxlength="40" placeholder="Например: Пицца">
+      </div>
+      <div class="fld">
+        <label>Значок (эмодзи)</label>
+        <input id="catEmoji" maxlength="4" placeholder="🍕">
+      </div>
+      <div class="hint">Категория появится в выпадающем списке окна товара и на витрине — как только в ней будет хотя бы один товар.</div>
+      <div class="mrow">
+        <button class="no" onclick="closeCat()">Отмена</button>
+        <button class="ok" id="catSave" onclick="saveCat()">Добавить</button>
       </div>
     </div>
   </div>
@@ -1283,15 +1307,44 @@ async function loadMenu(){
                       desc:it.desc||'', img:it.img||'', off:!!it.off};
             })};
   });
+  const added=ensureCats();
   menuDirty=false;
   renderMenuTabs(); renderMenu(curCat);
+  if(added) putMenu();          /* новые категории сразу уходят на витрину */
 }
-const DEMO_MENU=[
-  {name:'Бургеры',emoji:'🍔',items:[{name:'Бургер YaYa',price:2290}]},
-  {name:'Шаурма',emoji:'🌯',items:[{name:'Шаурма XL',price:2190}]},
-  {name:'Комбо',emoji:'🍟',items:[{name:'Комбо Big YaYa',price:3590}]},
-  {name:'Закуски',emoji:'🍗',items:[{name:'Крылышки острые (6 шт.)',price:1890},{name:'Стрипсы (6 шт.)',price:1690},{name:'Картофель фри',price:790}]},
+/* Добавляет в меню категории из BASE_CATS, которых ещё нет */
+function ensureCats(){
+  const have=MENU.map(c=>String(c.name||'').trim().toLowerCase());
+  let added=0;
+  BASE_CATS.forEach(function(b){
+    if(have.indexOf(b.name.toLowerCase())<0){
+      MENU.push({id:b.id,name:b.name,emoji:b.emoji,wide:false,items:[]});
+      added++;
+    }
+  });
+  return added;
+}
+/* Полный список категорий заведения. Они всегда есть в выпадающем
+   списке окна товара — даже если в базе их ещё нет: недостающие
+   добавляются при загрузке меню. Свои категории можно завести кнопкой
+   «+ Категория» на экране «Меню». */
+const BASE_CATS=[
+  {id:'sets',     name:'Сеты',                emoji:'🎁'},
+  {id:'wings',    name:'Крылышки и стрипсы',  emoji:'🍗'},
+  {id:'snacks',   name:'Закуски',             emoji:'🍟'},
+  {id:'burgers',  name:'Бургеры',             emoji:'🍔'},
+  {id:'doners',   name:'Шаурма и донеры',     emoji:'🌯'},
+  {id:'pizza',    name:'Пицца',               emoji:'🍕'},
+  {id:'bliny',    name:'Блины',               emoji:'🥞'},
+  {id:'combo',    name:'Комбо',               emoji:'🍱'},
+  {id:'drinks',   name:'Напитки',             emoji:'🥤'},
+  {id:'coffee',   name:'Кофе',                emoji:'☕'},
+  {id:'cocktails',name:'Коктейли',            emoji:'🍦'},
+  {id:'mohito',   name:'Мохито',              emoji:'🍹'},
+  {id:'lemonade', name:'Лимонад',             emoji:'🍋'},
+  {id:'sauces',   name:'Соусы',               emoji:'🫙'},
 ];
+const DEMO_MENU=BASE_CATS.map(c=>({id:c.id,name:c.name,emoji:c.emoji,items:[]}));
 let curCat='__all';
 function renderMenuTabs(){
   const cats=['__all'].concat(MENU.map(function(c){return c.name;}));
@@ -1321,6 +1374,58 @@ function renderMenu(cat){
     });
   });
   document.getElementById('menuList').innerHTML=rows||'<div class="empty">В категории пусто. Нажмите «+ Товар».</div>';
+  renderCatBar();
+}
+/* Панель управления открытой категорией */
+function renderCatBar(){
+  const bar=document.getElementById('catBar'); if(!bar) return;
+  const ci=MENU.findIndex(function(c){return c.name===curCat;});
+  if(curCat==='__all'||ci<0){ bar.innerHTML=''; return; }
+  const cnt=(MENU[ci].items||[]).length;
+  bar.innerHTML='<div class="vops" style="padding:0 16px 10px">'
+    +'<span style="flex:1;font-size:12.5px;font-weight:800;color:var(--muted);align-self:center">'
+    +esc(MENU[ci].emoji||'🍽️')+' '+esc(MENU[ci].name)+' · товаров: '+cnt+'</span>'
+    +'<button class="act" onclick="openCat('+ci+')">Переименовать</button>'
+    +'<button class="dng" onclick="delCat('+ci+')">Удалить категорию</button></div>';
+}
+
+/* ── Окно категории ── */
+let catIdx=-1;
+function openCat(ci){
+  catIdx=(ci===undefined||ci<0)?-1:ci;
+  const c=(catIdx>=0&&MENU[catIdx])||{};
+  document.getElementById('catTitle').textContent=catIdx>=0?'Изменить категорию':'Новая категория';
+  document.getElementById('catSave').textContent=catIdx>=0?'Сохранить':'Добавить';
+  document.getElementById('catName').value=c.name||'';
+  document.getElementById('catEmoji').value=c.emoji||'';
+  document.getElementById('catModal').classList.add('open');
+}
+function closeCat(){ document.getElementById('catModal').classList.remove('open'); }
+async function saveCat(){
+  const name=document.getElementById('catName').value.trim();
+  const emoji=document.getElementById('catEmoji').value.trim()||'🍽️';
+  if(!name){ toast('Впишите название'); return; }
+  const dup=MENU.findIndex(function(c,i){return i!==catIdx&&String(c.name).toLowerCase()===name.toLowerCase();});
+  if(dup>=0){ toast('Такая категория уже есть'); return; }
+  const btn=document.getElementById('catSave'); btn.disabled=true;
+  try{
+    if(catIdx>=0){ MENU[catIdx].name=name; MENU[catIdx].emoji=emoji; curCat=name; }
+    else { MENU.push({id:'c'+Date.now(),name:name,emoji:emoji,wide:false,items:[]}); curCat=name; }
+    renderMenu(curCat); closeCat();
+    const ok=await putMenu();
+    toast(ok?'Сохранено':'Не сохранилось — нажмите «Сохранить и опубликовать»');
+  } finally { btn.disabled=false; }
+}
+function delCat(ci){
+  const c=MENU[ci]; if(!c) return;
+  const cnt=(c.items||[]).length;
+  ask('Удалить категорию?',esc(c.name)+(cnt?(' — вместе с ней уйдут '+cnt+' товар(ов).'):' — она пустая.'),'Удалить',async function(){
+    const back=JSON.parse(JSON.stringify(MENU));
+    MENU.splice(ci,1); curCat='__all'; renderMenu(curCat);
+    const ok=await putMenu();
+    if(ok) toast('Категория удалена');
+    else { MENU=back; renderMenu(curCat); toast('Не удалось — проверьте связь'); }
+  });
 }
 async function toggleStock(ci,ii,btn){
   const it=MENU[ci]&&MENU[ci].items[ii]; if(!it) return;
