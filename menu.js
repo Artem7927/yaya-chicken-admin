@@ -1,4 +1,14 @@
-// ── МЕНЮ ──────────────────────────────────────────────────────────────
+/* ══════════════════════════════════════════════════════════════════════
+   YaYa Chicken · витрина: меню и карточка товара
+   • плитка — фото на всю карточку, название, состав и цена ПОВЕРХ фото
+   • тап по плитке открывает товар на весь экран
+   • длинный состав разворачивается тапом
+   Разметка сохранена: разделы «sec-<id категории>», кнопки .cat-btn,
+   плитки .item-card / .item-wide, кнопка «+» в #add-<id товара>.
+   Поэтому showCat, menuPhotos и поиск из index.html работают как прежде.
+   ══════════════════════════════════════════════════════════════════════ */
+
+// ── МЕНЮ (запасное: показывается, пока не пришло меню из кабинета) ────
 let MENU = [
   {id:'sets',name:'Сеты',emoji:'🎁',wide:true,items:[
     {id:'s1',name:'SET (Большой)',price:10290,desc:'крылышки 20 шт, ножки 30 шт, фри 2л, Coca Cola 2л'},
@@ -139,29 +149,68 @@ let MENU = [
   ]}
 ];
 
+// ── Мелкие помощники ─────────────────────────────────────────────────
+const yyEsc = s => String(s == null ? '' : s)
+  .replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const yyPrice = n => (Number(n) || 0).toLocaleString('ru') + ' тг';
+let yyOpenId = null;                       // товар, открытый на весь экран
+
 // ── Поиск позиции по id ───────────────────────────────────────────────
 function findItem(id) {
   for (const cat of MENU) {
-    const item = cat.items.find(i => i.id === id);
-    if (item) return { ...item, emoji: '' };
+    const item = (cat.items || []).find(i => i.id === id);
+    if (item) return { ...item, emoji: cat.emoji || '' };
   }
   return null;
 }
 
-// ── Обновление карточки (кнопка + / счётчик) ─────────────────────────
+// ── Стили карточки и полноэкранного товара ────────────────────────────
+(function yyStyles() {
+  if (document.getElementById('yy-card-css')) return;
+  const st = document.createElement('style');
+  st.id = 'yy-card-css';
+  st.textContent = `
+  /* плитка: фото на всю карточку, текст поверх фото */
+  .item-card{position:relative;aspect-ratio:1/1.24;background:var(--panel);
+    -webkit-tap-highlight-color:transparent;cursor:pointer}
+  .item-card .item-img-placeholder{position:absolute;inset:0;width:100%;height:100%;aspect-ratio:auto}
+  .item-card .item-img-placeholder::before{content:"";position:absolute;inset:0;z-index:1;
+    background:linear-gradient(to top,rgba(0,0,0,.93) 0%,rgba(0,0,0,.74) 30%,rgba(0,0,0,.14) 62%,transparent 100%)}
+  .item-card .item-info{position:absolute;left:0;right:0;bottom:0;z-index:2;padding:10px 11px 11px}
+  .item-card .item-name{min-height:unset;margin-bottom:2px;color:#fff;font-size:13.5px;
+    text-shadow:0 1px 6px rgba(0,0,0,.65);display:-webkit-box;-webkit-line-clamp:2;
+    -webkit-box-orient:vertical;overflow:hidden}
+  .item-card .item-desc{font-size:11px;font-weight:700;color:#CFC8BC;line-height:1.3;margin-bottom:2px;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .item-card .item-price{font-size:17px;text-shadow:0 1px 6px rgba(0,0,0,.65)}
+  .item-card .item-add-row{margin-top:5px}
+  .item-card .btn-add{width:38px;height:38px;font-size:22px;box-shadow:0 4px 14px rgba(0,0,0,.5)}
+  .item-card .soldout{margin:0 0 2px}
+  /* счётчик на плитке — компактной золотой пилюлей */
+  .item-card .qty-control{gap:0;background:var(--gold);border-radius:20px;padding:2px;
+    box-shadow:0 4px 14px rgba(0,0,0,.5)}
+  .item-card .qty-btn{width:32px;height:34px;border:none;background:transparent;color:#111;font-size:20px}
+  .item-card .qty-num{color:#111;min-width:18px}
+  .item-wide{cursor:pointer}
+
+  `;
+  document.head.appendChild(st);
+})();
+
+// ── Обновление кнопки + / счётчика (плитка и открытый товар) ─────────
 function updateCard(id) {
-  const qty = cart[id] || 0;
-  const el = document.getElementById('add-' + id);
-  if (!el) return;
-  if (qty === 0) {
-    el.innerHTML = `<button class="btn-add" onclick="addItem('${id}')">+</button>`;
-  } else {
-    el.innerHTML = `<div class="qty-control">
+  const qty = (typeof cart !== 'undefined' && cart[id]) || 0;
+  const html = qty === 0
+    ? `<button class="btn-add" onclick="addItem('${id}')">+</button>`
+    : `<div class="qty-control">
       <button class="qty-btn" onclick="removeItem('${id}')">−</button>
       <span class="qty-num">${qty}</span>
       <button class="qty-btn" onclick="addItem('${id}')">+</button>
     </div>`;
-  }
+  const el = document.getElementById('add-' + id);
+  if (el) el.innerHTML = html;
+  const foot = document.getElementById('yyFullAdd');
+  if (foot && yyOpenId === id) foot.innerHTML = html;
 }
 
 // ── Обновление плавающей кнопки корзины ──────────────────────────────
@@ -193,21 +242,21 @@ function renderMenu() {
     const sec = document.createElement('div');
     sec.className = 'section';
     sec.id = 'sec-' + cat.id;
-    sec.innerHTML = `<div class="section-title">${cat.name}</div>`;
+    sec.innerHTML = `<div class="section-title">${yyEsc(cat.name)}</div>`;
 
     if (cat.wide) {
       const list = document.createElement('div');
       list.className = 'items-list';
       cat.items.forEach(item => {
         list.innerHTML += `
-          <div class="item-wide">
+          <div class="item-wide" onclick="openProduct('${yyEsc(item.id)}')">
             <div class="item-img-placeholder"></div>
             <div class="item-wide-info">
-              <div class="item-name">${item.name}</div>
-              ${item.desc ? `<div class="item-wide-desc">${item.desc}</div>` : ''}
+              <div class="item-name">${yyEsc(item.name)}</div>
+              ${item.desc ? `<div class="item-wide-desc">${yyEsc(item.desc)}</div>` : ''}
               <div class="item-wide-bottom">
-                <div class="item-price">${item.price.toLocaleString('ru')} тг</div>
-                <div id="add-${item.id}"><button class="btn-add" onclick="addItem('${item.id}')">+</button></div>
+                <div class="item-price">${yyPrice(item.price)}</div>
+                <div id="add-${yyEsc(item.id)}" onclick="event.stopPropagation()"><button class="btn-add" onclick="addItem('${yyEsc(item.id)}')">+</button></div>
               </div>
             </div>
           </div>`;
@@ -218,13 +267,15 @@ function renderMenu() {
       grid.className = 'items-grid';
       cat.items.forEach(item => {
         grid.innerHTML += `
-          <div class="item-card">
-            <div class="item-img-placeholder"></div>
-            <div class="item-info">
-              <div class="item-name">${item.name}</div>
-              <div class="item-add-row">
-                <div class="item-price">${item.price.toLocaleString('ru')} тг</div>
-                <div id="add-${item.id}"><button class="btn-add" onclick="addItem('${item.id}')">+</button></div>
+          <div class="item-card" onclick="openProduct('${yyEsc(item.id)}')">
+            <div class="item-img-placeholder">
+              <div class="item-info">
+                <div class="item-name">${yyEsc(item.name)}</div>
+                ${item.desc ? `<div class="item-desc">${yyEsc(item.desc)}</div>` : ''}
+                <div class="item-add-row">
+                  <div class="item-price">${yyPrice(item.price)}</div>
+                  <div id="add-${yyEsc(item.id)}" onclick="event.stopPropagation()"><button class="btn-add" onclick="addItem('${yyEsc(item.id)}')">+</button></div>
+                </div>
               </div>
             </div>
           </div>`;
@@ -233,4 +284,110 @@ function renderMenu() {
     }
     content.appendChild(sec);
   });
+
+  /* если что-то уже лежит в корзине — вернуть счётчики на плитки */
+  if (typeof cart !== 'undefined') Object.keys(cart).forEach(updateCard);
 }
+
+/* ══ Товар на весь экран ═══════════════════════════════════════════
+   Стили прописаны прямо в элементах: окно рисуется одинаково в любом
+   вебвью и не зависит от таблиц стилей витрины.                    */
+const YY_BG='#0F0E0C', YY_GOLD='#F4B400', YY_TXT='#F2EFE8', YY_TXT2='#A6A197';
+
+function openProduct(id){
+  const it=findItem(id);
+  if(!it) return;
+  yyOpenId=id;
+
+  let el=document.getElementById('yyFull');
+  if(!el){ el=document.createElement('div'); el.id='yyFull'; document.body.appendChild(el); }
+  el.setAttribute('style',
+    'position:fixed;top:0;left:0;right:0;bottom:0;z-index:99999;background:'+YY_BG+';'
+   +'overflow-y:auto;-webkit-overflow-scrolling:touch;opacity:0;transition:opacity .18s ease;'
+   +'font-family:Nunito,system-ui,-apple-system,sans-serif');
+
+  const img=it.img?String(it.img):'';
+  const desc=(it.desc||'').trim();
+
+  el.innerHTML=
+    '<div id="yyHero" style="position:relative;width:100%;height:100vw;max-height:58vh;'
+     +'background:#211D17 center/cover no-repeat">'
+     +'<div style="position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);'
+     +'text-align:center;font-family:\'Bebas Neue\',sans-serif;font-size:56px;'
+     +'letter-spacing:2px;color:rgba(244,180,0,.28)">YaYa</div>'
+     +'<button onclick="closeProduct()" aria-label="Закрыть" style="position:absolute;top:14px;left:14px;'
+     +'width:42px;height:42px;border-radius:50%;border:none;background:rgba(0,0,0,.55);color:#fff;'
+     +'font-size:20px;line-height:1;cursor:pointer">✕</button>'
+     +'<div style="position:absolute;left:0;right:0;bottom:0;height:96px;'
+     +'background:linear-gradient(to top,'+YY_BG+',rgba(15,14,12,0))"></div>'
+   +'</div>'
+
+   +'<div style="padding:14px 18px 130px">'
+     +'<div style="font-size:24px;font-weight:900;line-height:1.15;color:'+YY_TXT+'">'+yyEsc(it.name)+'</div>'
+     +'<div style="font-size:28px;font-weight:900;color:'+YY_GOLD+';margin-top:8px">'+yyPrice(it.price)+'</div>'
+     +(it.off?'<div style="margin-top:16px;padding:12px 14px;border-radius:14px;'
+              +'background:rgba(255,143,106,.12);color:#ff8f6a;font-weight:800;font-size:14px">'
+              +'Сейчас этой позиции нет в наличии</div>':'')
+     +'<div style="font-size:11px;font-weight:800;color:'+YY_TXT2+';letter-spacing:1.4px;'
+     +'text-transform:uppercase;margin:22px 0 7px">Состав</div>'
+     +(desc
+        ? '<div id="yyDesc" onclick="toggleDesc()" style="font-size:15px;font-weight:600;line-height:1.55;'
+          +'color:'+YY_TXT+';max-height:4.7em;overflow:hidden">'+yyEsc(desc)+'</div>'
+          +'<button id="yyMore" onclick="toggleDesc()" style="display:none;margin-top:9px;background:none;'
+          +'border:none;padding:0;color:'+YY_GOLD+';font-family:inherit;font-size:14px;font-weight:800;'
+          +'cursor:pointer">Показать полностью</button>'
+        : '<div style="font-size:14px;font-weight:700;color:'+YY_TXT2+'">'
+          +'Состав не заполнен — добавьте его в кабинете</div>')
+   +'</div>'
+
+   +'<div style="position:fixed;left:0;right:0;bottom:0;background:'+YY_BG+';'
+   +'border-top:1px solid rgba(255,255,255,.08);padding:12px 18px calc(14px + env(safe-area-inset-bottom));'
+   +'display:flex;align-items:center;justify-content:space-between">'
+     +'<div style="font-size:12px;font-weight:800;color:'+YY_TXT2+'">'
+       +(it.off?'Нет в наличии'
+               :'Цена<b style="display:block;font-size:20px;color:'+YY_TXT+';font-weight:900;margin-top:2px">'
+                +yyPrice(it.price)+'</b>')
+     +'</div>'
+     +'<div id="yyFullAdd"></div>'
+   +'</div>';
+
+  /* фото ставим из JS: в атрибуте style кавычки внутри url() ломают разметку */
+  if(img){
+    const h=document.getElementById('yyHero');
+    if(h) h.style.backgroundImage='url("'+img.replace(/"/g,'%22')+'")';
+  }
+
+  if(!it.off) updateCard(id);
+
+  /* кнопка «Показать полностью» — только если текст правда не влез */
+  const d=document.getElementById('yyDesc'), m=document.getElementById('yyMore');
+  if(d&&m){
+    if(d.scrollHeight>d.clientHeight+4) m.style.display='';
+    else d.style.maxHeight='none';
+  }
+
+  document.body.style.overflow='hidden';
+  requestAnimationFrame(function(){ el.style.opacity='1'; });
+  try{ history.pushState({yyFull:1},''); }catch(e){}
+}
+
+function closeProduct(fromBack){
+  const el=document.getElementById('yyFull');
+  if(el){ el.style.opacity='0'; setTimeout(function(){ if(!yyOpenId&&el) el.remove(); },200); }
+  yyOpenId=null;
+  document.body.style.overflow='';
+  if(!fromBack){
+    try{ if(history.state&&history.state.yyFull) history.back(); }catch(e){}
+  }
+}
+
+function toggleDesc(){
+  const d=document.getElementById('yyDesc'), b=document.getElementById('yyMore');
+  if(!d) return;
+  const open=d.style.maxHeight==='none';
+  d.style.maxHeight=open?'4.7em':'none';
+  if(b) b.textContent=open?'Показать полностью':'Свернуть';
+}
+
+window.addEventListener('popstate',function(){ if(yyOpenId) closeProduct(true); });
+document.addEventListener('keydown',function(e){ if(e.key==='Escape'&&yyOpenId) closeProduct(); });
