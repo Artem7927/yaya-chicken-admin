@@ -297,6 +297,28 @@ input,select{font-family:inherit}
 .cfgbox.ok b{color:var(--green)}
 button:disabled{opacity:.45}
 .segdot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--red);margin-left:5px;vertical-align:2px}
+/* ── Баннеры ── */
+.bnprev{margin:0 16px 12px;border:1px solid var(--border);border-radius:16px;overflow:hidden;background:var(--panel)}
+.bnprev .ph{aspect-ratio:16/7;display:flex;align-items:center;justify-content:center;color:var(--muted);
+  font-weight:800;font-size:13px;background:var(--panel2);text-align:center;padding:0 20px}
+.bnprev img{display:block;width:100%;aspect-ratio:16/7;object-fit:cover}
+.bnprev .meta{display:flex;gap:16px;padding:11px 14px;font-size:12.5px;font-weight:800;color:var(--text2);flex-wrap:wrap}
+.bnprev .meta b{color:var(--text)}
+.bnprev .meta .live{color:var(--green)}
+.bnprev .meta .stop{color:var(--muted)}
+.bnrow{display:flex;gap:11px;padding:12px 16px;border-bottom:1px solid var(--border);align-items:flex-start}
+.bnrow.off{opacity:.5}
+.bnrow .th{width:84px;height:52px;border-radius:10px;object-fit:cover;background:var(--panel2);flex:0 0 auto}
+.bnrow .th.ph{display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:11px;font-weight:800}
+.bnrow .bd{flex:1;min-width:0}
+.bnrow .nm{font-weight:900;font-size:14.5px;line-height:1.25}
+.bnrow .sub{font-size:12px;color:var(--muted);font-weight:700;margin-top:3px}
+.bnrow .sub .on{color:var(--green)}
+.bnsec{margin:16px 16px 4px;background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:14px}
+.bnsect{font-family:'Bebas Neue',sans-serif;font-size:19px;letter-spacing:.6px;margin-bottom:12px}
+.bnsec .fld{padding:0;margin-bottom:12px}
+.bntog{display:flex;align-items:center;gap:10px;padding:9px 0;font-weight:800;font-size:14px;color:var(--text2)}
+.bntog input{width:19px;height:19px;accent-color:var(--gold)}
 .grow{padding:13px 16px;border-bottom:1px solid var(--border)}
 .grow.off{opacity:.45}
 .grow .gt{font-weight:900;font-size:15px}
@@ -405,6 +427,109 @@ button:disabled{opacity:.45}
 
     <button class="savebar" onclick="saveTV()">Сохранить и опубликовать</button>
   </section>
+
+  <!-- БАННЕРЫ -->
+  <section class="screen" id="s-banners">
+    <header class="hd">
+      <div class="t">Баннеры</div>
+      <div class="acts"><button class="btn-line" onclick="go('more')">Назад</button></div>
+    </header>
+    <div class="hint">Баннер на главном экране витрины. Если слайдов несколько, они листаются сами. По нажатию покупателя можно отправить в категорию меню или на любую ссылку.</div>
+
+    <div id="bnCfgBox"></div>
+
+    <div class="bnprev" id="bnPreview"></div>
+
+    <button class="addwide" onclick="openSlide(-1)">+ Создать новый слайд</button>
+    <div id="bnList"></div>
+
+    <div class="bnsec">
+      <div class="bnsect">Как листается</div>
+      <div class="fld">
+        <label>Переход между слайдами</label>
+        <select id="bnType" onchange="bnDirty=true">
+          <option value="fade">Плавное проявление</option>
+          <option value="slide">Сдвиг вбок</option>
+          <option value="zoom">Приближение</option>
+        </select>
+      </div>
+      <div class="fld">
+        <label>Скорость перехода</label>
+        <select id="bnSpeed" onchange="bnDirty=true">
+          <option value="500">Быстро · 0,5 сек</option>
+          <option value="1000" selected>Норма · 1 сек</option>
+          <option value="2000">Медленно · 2 сек</option>
+        </select>
+      </div>
+      <label class="bntog"><input type="checkbox" id="bnAuto" checked onchange="bnDirty=true"><span>Листать автоматически</span></label>
+      <label class="bntog"><input type="checkbox" id="bnLoop" checked onchange="bnDirty=true"><span>Бесконечный цикл</span></label>
+    </div>
+
+    <div class="bnsec">
+      <div class="bnsect">Когда показывать</div>
+      <div class="hint" style="margin:0 0 10px">Оставьте поля пустыми, чтобы баннер показывался всегда.</div>
+      <div class="fld">
+        <label>Показывать с</label>
+        <input type="datetime-local" id="bnFrom" onchange="bnDirty=true">
+      </div>
+      <div class="fld">
+        <label>Показывать до</label>
+        <input type="datetime-local" id="bnTo" onchange="bnDirty=true">
+      </div>
+    </div>
+
+    <button class="savebar" onclick="saveBanners()">Сохранить и опубликовать</button>
+  </section>
+
+  <!-- ОКНО СЛАЙДА -->
+  <div class="modal" id="bnModal" onclick="if(event.target===this)closeSlide()">
+    <div class="sheet">
+      <div class="mt" id="bnMTitle">Новый слайд</div>
+      <div class="fld">
+        <label>Картинка с телефона</label>
+        <input type="file" id="bnFile" accept="image/*" style="display:none" onchange="onSlidePick(event)">
+        <button class="pickbtn" onclick="document.getElementById('bnFile').click()">
+          <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.5"/><path d="m4 17 5-4 4 3 3-2 4 3"/></svg>
+          Выбрать картинку из галереи</button>
+        <div class="pickname" id="bnFileName"></div>
+        <div class="uprog" id="bnProg"><i></i></div>
+        <div class="upnote" id="bnNote"></div>
+      </div>
+      <div class="ordiv">или</div>
+      <div class="fld">
+        <label>Ссылка на картинку</label>
+        <input id="bnSrc" placeholder="https://…/banner.jpg">
+      </div>
+      <div class="fld">
+        <label>Название слайда (видите только вы)</label>
+        <input id="bnName" maxlength="60" placeholder="Например: Сочный бургер">
+      </div>
+      <div class="fld">
+        <label>Сколько секунд держать на экране</label>
+        <input id="bnSec" type="number" min="2" max="30" value="5">
+      </div>
+      <div class="fld">
+        <label>Куда ведёт нажатие</label>
+        <select id="bnAct" onchange="bnActChanged()">
+          <option value="none">Никуда — просто картинка</option>
+          <option value="cat">Открыть категорию меню</option>
+          <option value="url">Открыть ссылку</option>
+        </select>
+      </div>
+      <div class="fld" id="bnCatWrap" style="display:none">
+        <label>Какая категория</label>
+        <select id="bnCat"></select>
+      </div>
+      <div class="fld" id="bnUrlWrap" style="display:none">
+        <label>Адрес ссылки</label>
+        <input id="bnUrl" placeholder="https://instagram.com/…">
+      </div>
+      <div class="mrow">
+        <button class="no" onclick="closeSlide()">Отмена</button>
+        <button class="ok" id="bnSave" onclick="saveSlide()">Добавить</button>
+      </div>
+    </div>
+  </div>
 
   <!-- YAYA RADIO -->
   <section class="screen" id="s-radio">
@@ -671,6 +796,7 @@ function go(id,navId){
   if(id==='menu'  && !menuLoaded) loadMenu();
   if(id==='tv'    && !tvLoaded)   loadTV();
   if(id==='radio' && !rdLoaded)   loadRadio();
+  if(id==='banners' && !bnLoaded) loadBanners();
 }
 
 /* ═════════ ДАННЫЕ ═════════ */
@@ -1140,12 +1266,210 @@ const MORE=[
   ['Настройки','<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>'],
   ['Поддержка','<path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/>'],
 ];
-const MORE_LINK={'YaYa TV':'tv','YaYa Radio':'radio'};
+const MORE_LINK={'YaYa TV':'tv','YaYa Radio':'radio','Баннеры':'banners'};
 document.getElementById('moreGrid').innerHTML=MORE.map(([l,ic])=>{
   const scr=MORE_LINK[l];
   const act=scr?`go('${scr}','more')`:`toast('«${l}» — добавим следующим шагом')`;
   return `<a class="tile" href="#" onclick="${act};return false"><svg viewBox="0 0 24 24">${ic}</svg><span>${l}</span></a>`;
 }).join('');
+
+/* ═════════ Баннеры ═════════
+   Лежат в /kv/yaya_banners, витрина читает тот же ключ.
+   Формат: {slides:[{id,img,name,sec,off,act:'none|cat|url',cat,url}],
+            anim:{type,speed,auto,loop}, from:'', to:''}          */
+const BAN_KEY='yaya_banners';
+let BANNERS={slides:[],anim:{type:'fade',speed:1000,auto:true,loop:true},from:'',to:''};
+let bnLoaded=false, bnDirty=false, bnIdx=-1, bnFile=null;
+
+async function loadBanners(){
+  try{
+    const j=await api('/kv/'+BAN_KEY+'?_='+Date.now());
+    if(j.value&&typeof j.value==='object') BANNERS=Object.assign(BANNERS,j.value);
+  }catch(e){}
+  if(!Array.isArray(BANNERS.slides)) BANNERS.slides=[];
+  if(!BANNERS.anim||typeof BANNERS.anim!=='object') BANNERS.anim={type:'fade',speed:1000,auto:true,loop:true};
+  const a=BANNERS.anim;
+  document.getElementById('bnType').value=a.type||'fade';
+  document.getElementById('bnSpeed').value=String(a.speed||1000);
+  document.getElementById('bnAuto').checked=a.auto!==false;
+  document.getElementById('bnLoop').checked=a.loop!==false;
+  document.getElementById('bnFrom').value=BANNERS.from||'';
+  document.getElementById('bnTo').value=BANNERS.to||'';
+  bnLoaded=true; bnDirty=false;
+  renderBanners(); bnCfgBox();
+}
+/* Напоминание про хранилище — картинки грузятся туда же, куда ролики */
+function bnCfgBox(){
+  const box=document.getElementById('bnCfgBox');
+  if(cloudReady()){ box.innerHTML=''; return; }
+  box.innerHTML='<div class="cfgbox">Чтобы загружать картинки с телефона, подключите хранилище — это делается один раз.'
+              +'<button onclick="setupStorage()">Подключить хранилище</button></div>';
+}
+/* Показывается ли баннер прямо сейчас — по датам показа */
+function bnLive(){
+  const now=Date.now();
+  if(BANNERS.from&&atMs(BANNERS.from)>now) return false;
+  if(BANNERS.to&&atMs(BANNERS.to)<now) return false;
+  return BANNERS.slides.some(s=>s&&!s.off&&s.img);
+}
+function renderBanners(){
+  const on=BANNERS.slides.filter(s=>s&&!s.off&&s.img);
+  const total=on.reduce((n,s)=>n+(Number(s.sec)||5),0);
+  const live=bnLive();
+  document.getElementById('bnPreview').innerHTML=
+    (on.length?`<img src="${esc(on[0].img)}" alt="">`
+             :'<div class="ph">Пока ни одного слайда — витрина покажет обычную картинку banner.jpg</div>')
+    +`<div class="meta"><span>Слайдов: <b>${on.length}</b></span>`
+    +`<span>Полный круг: <b>${total} сек</b></span>`
+    +`<span class="${live?'live':'stop'}">${live?'● Показывается':'○ Не показывается'}</span></div>`;
+
+  const box=document.getElementById('bnList');
+  if(!BANNERS.slides.length){ box.innerHTML='<div class="empty">Слайдов пока нет.</div>'; return; }
+  box.innerHTML=BANNERS.slides.map((s,i)=>{
+    const act=s.act==='cat'?('в меню: '+esc(s.cat||'')):(s.act==='url'?'по ссылке':'без перехода');
+    return `<div class="bnrow ${s.off?'off':''}">
+      ${s.img?`<img class="th" src="${esc(s.img)}" alt="">`:'<div class="th ph">нет</div>'}
+      <div class="bd">
+        <div class="nm">${esc(s.name||'Слайд '+(i+1))}</div>
+        <div class="sub">${Number(s.sec)||5} сек · ${act} · <span class="${s.off?'':'on'}">${s.off?'выключен':'активен'}</span></div>
+        <div class="vops">
+          <button class="act" onclick="openSlide(${i})">Изменить</button>
+          <button onclick="slideMove(${i},-1)" ${i===0?'disabled':''}>Выше</button>
+          <button onclick="slideMove(${i},1)" ${i===BANNERS.slides.length-1?'disabled':''}>Ниже</button>
+          <button onclick="slideOff(${i})">${s.off?'Включить':'Выключить'}</button>
+          <button onclick="slideDup(${i})">Копия</button>
+          <button class="dng" onclick="slideDel(${i})">Удалить</button>
+        </div>
+      </div></div>`;
+  }).join('');
+}
+function slideMove(i,d){
+  const j=i+d; if(j<0||j>=BANNERS.slides.length) return;
+  const t=BANNERS.slides[i]; BANNERS.slides[i]=BANNERS.slides[j]; BANNERS.slides[j]=t;
+  bnDirty=true; renderBanners();
+}
+function slideOff(i){ BANNERS.slides[i].off=!BANNERS.slides[i].off; bnDirty=true; renderBanners(); }
+function slideDup(i){
+  const c=Object.assign({},BANNERS.slides[i]);
+  c.id='b'+Date.now(); c.name=(c.name||'Слайд')+' (копия)';
+  BANNERS.slides.splice(i+1,0,c); bnDirty=true; renderBanners();
+}
+function slideDel(i){
+  const s=BANNERS.slides[i]||{};
+  ask('Удалить слайд?',(s.name||'Слайд')+' — уберём из баннера.','Удалить',function(){
+    BANNERS.slides.splice(i,1); bnDirty=true; renderBanners(); toast('Удалено — нажмите «Сохранить и опубликовать»');
+  });
+}
+
+function openSlide(i){
+  bnIdx=i; bnFile=null;
+  const s=(i>=0&&BANNERS.slides[i])||{};
+  document.getElementById('bnMTitle').textContent=i>=0?'Изменить слайд':'Новый слайд';
+  document.getElementById('bnSave').textContent=i>=0?'Сохранить':'Добавить';
+  document.getElementById('bnSrc').value=s.img||'';
+  document.getElementById('bnName').value=s.name||'';
+  document.getElementById('bnSec').value=Number(s.sec)||5;
+  document.getElementById('bnAct').value=s.act||'none';
+  document.getElementById('bnUrl').value=s.url||'';
+  document.getElementById('bnFileName').textContent='';
+  document.getElementById('bnNote').className='upnote';
+  document.getElementById('bnProg').className='uprog';
+  bnFillCats(s.cat||'');
+  bnActChanged();
+  document.getElementById('bnModal').classList.add('open');
+}
+function closeSlide(){ document.getElementById('bnModal').classList.remove('open'); }
+function bnActChanged(){
+  const v=document.getElementById('bnAct').value;
+  document.getElementById('bnCatWrap').style.display=v==='cat'?'':'none';
+  document.getElementById('bnUrlWrap').style.display=v==='url'?'':'none';
+}
+/* Список категорий берём тот же, что у ТВ — чтобы не расходился с меню */
+function bnFillCats(cur){
+  const sel=document.getElementById('bnCat');
+  const cats=tvCats();
+  sel.innerHTML=cats.map(c=>`<option value="${esc(c[0])}"${c[0]===cur?' selected':''}>${esc(c[1])}</option>`).join('');
+}
+function onSlidePick(e){
+  const f=(e.target.files||[])[0]; if(!f) return;
+  if(f.size>10*1024*1024){ toast('Картинка больше 10 МБ — сожмите её'); e.target.value=''; return; }
+  bnFile=f;
+  document.getElementById('bnSrc').value='';
+  document.getElementById('bnFileName').textContent=f.name+' · '+(f.size/1048576).toFixed(1)+' МБ';
+  /* сразу подсказываем про пропорции: витрина показывает полосу 16:7 */
+  const img=new Image(), url=URL.createObjectURL(f);
+  const note=document.getElementById('bnNote');
+  img.onload=function(){
+    const r=img.width/img.height;
+    note.className='upnote on'+(r<1.6||r>3?' err':'');
+    note.textContent=(r<1.6||r>3)
+      ? 'Картинка '+img.width+'×'+img.height+' — на витрине обрежется. Лучше вытянутую, примерно 1200×520'
+      : 'Картинка подходит · '+img.width+'×'+img.height;
+    URL.revokeObjectURL(url);
+  };
+  img.onerror=function(){ note.className='upnote on err'; note.textContent='Не похоже на картинку'; };
+  img.src=url;
+}
+function bnProgress(p){
+  const w=document.getElementById('bnProg'), b=w.querySelector('i');
+  if(p<0){ w.className='uprog'; return; }
+  w.className='uprog on'; b.style.width=Math.round(p*100)+'%';
+}
+async function saveSlide(){
+  const btn=document.getElementById('bnSave');
+  const src=document.getElementById('bnSrc').value.trim();
+  if(!bnFile&&!src){ toast('Выберите картинку или вставьте ссылку'); return; }
+  const s={
+    id:(bnIdx>=0&&BANNERS.slides[bnIdx]&&BANNERS.slides[bnIdx].id)||('b'+Date.now()),
+    img:src,
+    name:document.getElementById('bnName').value.trim(),
+    sec:Math.min(30,Math.max(2,Number(document.getElementById('bnSec').value)||5)),
+    act:document.getElementById('bnAct').value,
+    cat:document.getElementById('bnCat').value||'',
+    url:document.getElementById('bnUrl').value.trim(),
+    off:(bnIdx>=0&&BANNERS.slides[bnIdx])?!!BANNERS.slides[bnIdx].off:false
+  };
+  if(s.act==='url'&&!/^https?:\/\//i.test(s.url)){ toast('Ссылка должна начинаться с https://'); return; }
+  btn.disabled=true;
+  try{
+    if(bnFile){
+      btn.textContent='Загружаю…';
+      try{ s.img=await uploadOwn(bnFile,bnProgress); }
+      catch(e1){
+        if(!e1.absent) throw e1;
+        if(!cloudReady()){ bnProgress(-1); cfgPending=true; openCfg();
+          toast('Сначала подключите хранилище'); return; }
+        s.img=await uploadCloud(bnFile,bnProgress,'image');
+      }
+    }
+    if(!s.img){ toast('Картинка не загрузилась'); return; }
+    if(bnIdx>=0) BANNERS.slides[bnIdx]=s; else BANNERS.slides.push(s);
+    bnDirty=true; renderBanners(); closeSlide();
+    toast('Слайд добавлен — нажмите «Сохранить и опубликовать»');
+  }catch(e){
+    toast('Не получилось: '+(e.message||e));
+    if(e.cfg){ cfgPending=true; openCfg(); }
+  }finally{
+    bnProgress(-1); btn.disabled=false; btn.textContent=bnIdx>=0?'Сохранить':'Добавить';
+  }
+}
+async function saveBanners(){
+  BANNERS.anim={
+    type:document.getElementById('bnType').value,
+    speed:Number(document.getElementById('bnSpeed').value)||1000,
+    auto:document.getElementById('bnAuto').checked,
+    loop:document.getElementById('bnLoop').checked
+  };
+  BANNERS.from=document.getElementById('bnFrom').value||'';
+  BANNERS.to  =document.getElementById('bnTo').value||'';
+  if(BANNERS.from&&BANNERS.to&&atMs(BANNERS.from)>=atMs(BANNERS.to)){
+    toast('Дата окончания должна быть позже даты запуска'); return;
+  }
+  const ok=await tryPut('/kv/'+BAN_KEY,BANNERS);
+  if(ok) bnDirty=false;
+  renderBanners();
+  toast(ok?'Баннер опубликован — витрина подхватит за полминуты':'Не сохранилось — проверьте связь');
+}
 
 /* ═════════ YaYa ТВ ═════════
    Лента и реклама лежат в /kv/yaya_tv, витрина читает тот же ключ.
