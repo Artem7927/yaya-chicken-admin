@@ -930,6 +930,7 @@ async function loadOrders(manual){
   try{
     const j=await api('/orders?limit=100');
     ORDERS=Array.isArray(j.orders)?j.orders:[];
+    await refreshCour();                  // свежие назначения с сервера (их мог менять курьер)
     overlayCour();                        // курьер/доставка — из надёжного /kv
     applyPending();                       // не даём опросу затирать несохранённый статус кухни
     document.getElementById('offline').classList.remove('show');
@@ -995,10 +996,26 @@ function updateSync(){
   const bar=document.getElementById('syncbar');
   if(bar) bar.classList.toggle('show', saveInFlight>0 || Object.keys(pending).length>0 || courDirty);
 }
+/* Мои изменения, ещё не подтверждённые сервером: id -> {courier, delivery_status} */
+let courPending={};
+/* Подтягиваем назначения с сервера: серверная версия — основа,
+   поверх ложатся только мои несохранённые правки. Так статусы,
+   которые проставил курьер («В пути», «Доставлен»), не затираются. */
+async function refreshCour(){
+  try{
+    const c=await api('/kv/yaya_order_couriers');
+    const srv=(c.value&&typeof c.value==='object')?c.value:{};
+    ORDER_COUR=Object.assign({},srv,courPending);
+  }catch(e){}
+}
 /* Сохранение назначений курьеров в /kv (надёжный путь) */
 async function saveCour(){
   saveInFlight++; updateSync();
-  const ok=await tryPut('/kv/yaya_order_couriers',ORDER_COUR);
+  let srv={};
+  try{ const c=await api('/kv/yaya_order_couriers'); if(c.value&&typeof c.value==='object')srv=c.value; }catch(e){}
+  const merged=Object.assign({},srv,courPending);
+  const ok=await tryPut('/kv/yaya_order_couriers',merged);
+  if(ok){ ORDER_COUR=merged; courPending={}; }
   saveInFlight=Math.max(0,saveInFlight-1);
   courDirty=!ok;
   updateSync();
@@ -1162,7 +1179,8 @@ async function setKitchen(id,status){
 async function assignCourier(id,name){
   const o=ORDERS.find(x=>x.id==id); let dst;
   if(o){ o.courier=name; if(name&&(!o.delivery_status||o.delivery_status==='pending'))o.delivery_status='assigned'; if(!name)o.delivery_status='pending'; dst=o.delivery_status; }
-  ORDER_COUR[id]=Object.assign({},ORDER_COUR[id],{courier:name||'',delivery_status:dst});
+  ORDER_COUR[id]=Object.assign({},ORDER_COUR[id],{courier:name||'',delivery_status:dst||'assigned'});
+  courPending[id]=ORDER_COUR[id];
   renderOrders();renderCouriers();renderStats();
   const ok=await saveCour();
   toast(ok?(name?'Курьер назначен: '+name:'Курьер снят'):'Нет связи — сохраню автоматически');
@@ -1171,6 +1189,7 @@ async function setDStatus(id,st){
   const o=ORDERS.find(x=>x.id==id); if(o) o.delivery_status=st;
   ORDER_COUR[id]=Object.assign({},ORDER_COUR[id],{delivery_status:st});
   if(o) ORDER_COUR[id].courier=o.courier||ORDER_COUR[id].courier||'';
+  courPending[id]=ORDER_COUR[id];
   renderOrders();renderStats();renderCouriers();
   const ok=await saveCour();
   toast(ok?('Доставка: '+DST_LABEL[st]):'Нет связи — сохраню автоматически');
