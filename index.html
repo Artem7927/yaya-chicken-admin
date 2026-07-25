@@ -2784,24 +2784,45 @@ function _b64ToU8(base64){
   return arr;
 }
 async function enablePush(){
+  var st=document.getElementById('notifStatus');
+  function S(t){ if(st) st.textContent=t; }
   try{
-    if(!('serviceWorker' in navigator)||!('PushManager' in window)){ toast('Браузер не поддерживает уведомления'); return; }
+    if(!('serviceWorker' in navigator)||!('PushManager' in window)){ S('Браузер не поддерживает push'); toast('Не поддерживается'); return; }
+    S('Запрашиваю разрешение…');
     var perm=await Notification.requestPermission();
-    if(perm!=='granted'){ toast('Уведомления не разрешены'); updateNotifUI(); return; }
+    if(perm!=='granted'){ S('Разрешение не выдано ('+perm+')'); toast('Уведомления не разрешены'); return; }
+    S('Готовлю service worker…');
     var reg=await navigator.serviceWorker.ready;
-    var keyRes=await fetch(API+'/push/public-key',{cache:'no-store'});
-    var keyJson=await keyRes.json();
-    if(!keyJson||!keyJson.key){ toast('Сервер не отдал ключ'); return; }
-    var sub=await reg.pushManager.getSubscription();
-    if(!sub) sub=await reg.pushManager.subscribe({userVisibleOnly:true, applicationServerKey:_b64ToU8(keyJson.key)});
-    var r=await fetch(API+'/push/subscribe',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','X-Admin-Token':ADMIN_KEY},
-      body:JSON.stringify({role:'admin', sub:sub})
-    });
-    if(r.ok) toast('Уведомления включены'); else toast('Не удалось подписаться');
-    updateNotifUI();
-  }catch(e){ toast('Ошибка уведомлений'); }
+    S('Беру ключ с сервера…');
+    var keyRes, keyJson;
+    try{ keyRes=await fetch(API+'/push/public-key',{cache:'no-store'}); keyJson=await keyRes.json(); }
+    catch(e){ S('Сеть: ключ не получен ('+(e&&e.name||e)+')'); toast('Нет связи'); return; }
+    if(!keyJson||!keyJson.key){ S('Сервер не отдал ключ'); toast('Нет ключа'); return; }
+    S('Создаю подписку…');
+    var sub;
+    try{
+      sub=await reg.pushManager.getSubscription();
+      if(!sub) sub=await reg.pushManager.subscribe({userVisibleOnly:true, applicationServerKey:_b64ToU8(keyJson.key)});
+    }catch(e){ S('Подписка не создалась: '+(e&&e.name||e)); toast('Ошибка подписки'); return; }
+    S('Отправляю на сервер…');
+    var r;
+    try{
+      r=await fetch(API+'/push/subscribe',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','X-Admin-Token':(typeof ADMIN_KEY!=='undefined'?ADMIN_KEY:'')},
+        body:JSON.stringify({role:'admin', sub:sub})
+      });
+    }catch(e){ S('Сеть: POST не дошёл ('+(e&&e.name||e)+')'); toast('Нет связи с сервером'); return; }
+    if(r.ok){
+      S('Пуш о новых заказах включён');
+      var btn=document.getElementById('notifBtn'); if(btn){ btn.textContent='Уведомления включены'; btn.disabled=true; }
+      toast('Уведомления включены');
+    } else {
+      var txt=''; try{ txt=await r.text(); }catch(e){}
+      S('Сервер отклонил: HTTP '+r.status+(txt?' · '+txt.slice(0,60):'')+(!ADMIN_KEY?' · нет ключа кабинета — войдите заново':''));
+      toast('Не подписаться (HTTP '+r.status+')');
+    }
+  }catch(e){ S('Ошибка: '+(e&&e.name||e)); toast('Ошибка уведомлений'); }
 }
 setTimeout(function(){ try{ updateNotifUI(); }catch(e){} }, 800);
 </script>
