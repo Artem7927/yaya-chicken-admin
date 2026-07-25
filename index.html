@@ -772,6 +772,10 @@ button:disabled{opacity:.45}
   <section class="screen" id="s-more">
     <header class="hd"><div class="t">Ещё</div></header>
     <div class="grid3" id="moreGrid"></div>
+    <div class="shift" style="margin-top:12px">
+      <div class="meta" id="notifStatus" style="margin-bottom:8px">Уведомления о новых заказах</div>
+      <button class="ok" id="notifBtn" onclick="enablePush()">Включить уведомления</button>
+    </div>
     <div class="shift">
       <div class="r"><div class="mark">YaYa</div>
         <div><div class="nm">YaYa Chicken на Абая</div><div class="open"><i></i>Смена открыта</div></div></div>
@@ -2758,6 +2762,48 @@ async function saveRadio(){
   saveInFlight=Math.max(0,saveInFlight-1); updateSync();
   toast(ok?'Опубликовано — витрина обновится сама':'Не сохранилось — проверьте связь и повторите');
 }
+</script>
+<script>
+/* ── Push-уведомления кабинета ── */
+if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').catch(function(){}); }
+function updateNotifUI(){
+  var btn=document.getElementById('notifBtn'), st=document.getElementById('notifStatus');
+  if(!btn) return;
+  if(!('Notification' in window)||!('serviceWorker' in navigator)||!('PushManager' in window)){
+    btn.style.display='none'; if(st) st.textContent='Уведомления не поддерживаются этим браузером'; return;
+  }
+  if(Notification.permission==='granted'){ btn.textContent='Уведомления включены'; btn.disabled=true; if(st) st.textContent='Пуш о новых заказах включён'; }
+  else if(Notification.permission==='denied'){ btn.textContent='Уведомления заблокированы'; btn.disabled=true; if(st) st.textContent='Разрешите уведомления в настройках браузера'; }
+  else { btn.textContent='Включить уведомления'; btn.disabled=false; }
+}
+function _b64ToU8(base64){
+  var pad='='.repeat((4-base64.length%4)%4);
+  var b64=(base64+pad).replace(/-/g,'+').replace(/_/g,'/');
+  var raw=atob(b64), arr=new Uint8Array(raw.length);
+  for(var i=0;i<raw.length;i++) arr[i]=raw.charCodeAt(i);
+  return arr;
+}
+async function enablePush(){
+  try{
+    if(!('serviceWorker' in navigator)||!('PushManager' in window)){ toast('Браузер не поддерживает уведомления'); return; }
+    var perm=await Notification.requestPermission();
+    if(perm!=='granted'){ toast('Уведомления не разрешены'); updateNotifUI(); return; }
+    var reg=await navigator.serviceWorker.ready;
+    var keyRes=await fetch(API+'/push/public-key',{cache:'no-store'});
+    var keyJson=await keyRes.json();
+    if(!keyJson||!keyJson.key){ toast('Сервер не отдал ключ'); return; }
+    var sub=await reg.pushManager.getSubscription();
+    if(!sub) sub=await reg.pushManager.subscribe({userVisibleOnly:true, applicationServerKey:_b64ToU8(keyJson.key)});
+    var r=await fetch(API+'/push/subscribe',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-Admin-Token':ADMIN_KEY},
+      body:JSON.stringify({role:'admin', sub:sub})
+    });
+    if(r.ok) toast('Уведомления включены'); else toast('Не удалось подписаться');
+    updateNotifUI();
+  }catch(e){ toast('Ошибка уведомлений'); }
+}
+setTimeout(function(){ try{ updateNotifUI(); }catch(e){} }, 800);
 </script>
 </body>
 </html>

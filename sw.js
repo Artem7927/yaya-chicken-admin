@@ -2,7 +2,7 @@
    Манифест и страница ВСЕГДА берутся из сети, чтобы Chrome видел свежий
    манифест и предлагал установку. Кэш — только как офлайн-запаска. */
 
-const CACHE = 'yaya-kabinet-v5';
+const CACHE = 'yaya-kabinet-v6';
 const SHELL = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', (e) => {
@@ -50,4 +50,27 @@ self.addEventListener('fetch', (e) => {
 
   // Иконки и прочая своя статика — сеть, с запаской из кэша
   e.respondWith(fetch(req).catch(() => caches.match(req)));
+});
+
+self.addEventListener('push', (e) => {
+  let d = {};
+  try { d = e.data ? e.data.json() : {}; } catch (err) { d = { title: 'YaYa', body: e.data ? e.data.text() : '' }; }
+  const opts = {
+    body: d.body || '',
+    icon: './icon-192.png',
+    badge: './icon-192.png',
+    tag: d.tag || undefined,
+    renotify: !!d.tag,
+    data: { url: d.url || './' }
+  };
+  e.waitUntil(self.registration.showNotification(d.title || 'YaYa Chicken', opts));
+});
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close();
+  const url = (e.notification.data && e.notification.data.url) || './';
+  e.waitUntil((async () => {
+    const all = await clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for (const c of all) { if ('focus' in c) return c.focus(); }
+    if (clients.openWindow) return clients.openWindow(url);
+  })());
 });
