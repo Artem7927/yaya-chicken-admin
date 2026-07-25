@@ -1064,6 +1064,7 @@ function renderStats(){
   const nReady=P.filter(o=>o.kst==='done'&&o.dst!=='delivered').length;
   const busyCour=new Set(P.filter(o=>o.courier&&o.dst!=='delivered').map(o=>o.courier));
   document.getElementById('stNew').textContent=nNew;
+  try{ if(navigator.setAppBadge){ if(nNew>0) navigator.setAppBadge(nNew); else if(navigator.clearAppBadge) navigator.clearAppBadge(); } }catch(e){}
   document.getElementById('stCook').textContent=nCook;
   document.getElementById('stReady').textContent=nReady;
   document.getElementById('stCour').textContent=busyCour.size+' / '+COURIERS.length;
