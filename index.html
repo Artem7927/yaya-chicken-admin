@@ -2772,9 +2772,13 @@ function updateNotifUI(){
   if(!('Notification' in window)||!('serviceWorker' in navigator)||!('PushManager' in window)){
     btn.style.display='none'; if(st) st.textContent='Уведомления не поддерживаются этим браузером'; return;
   }
-  if(Notification.permission==='granted'){ btn.textContent='Уведомления включены'; btn.disabled=true; if(st) st.textContent='Пуш о новых заказах включён'; }
-  else if(Notification.permission==='denied'){ btn.textContent='Уведомления заблокированы'; btn.disabled=true; if(st) st.textContent='Разрешите уведомления в настройках браузера'; }
-  else { btn.textContent='Включить уведомления'; btn.disabled=false; }
+  if(Notification.permission==='denied'){
+    btn.textContent='Уведомления заблокированы'; btn.disabled=true;
+    if(st) st.textContent='Разрешите уведомления в настройках браузера'; return;
+  }
+  // granted или default — кнопка ВСЕГДА активна, чтобы можно было (пере)подписаться
+  btn.disabled=false;
+  btn.textContent = (Notification.permission==='granted') ? 'Переподключить уведомления' : 'Включить уведомления';
 }
 function _b64ToU8(base64){
   var pad='='.repeat((4-base64.length%4)%4);
