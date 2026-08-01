@@ -774,9 +774,6 @@ button:disabled{opacity:.45}
     <div class="grid3" id="moreGrid"></div>
     <div class="shift" style="margin-top:12px">
       <div class="meta" id="notifStatus" style="margin-bottom:8px">Уведомления о новых заказах</div>
-      <button class="ok" id="notifBtn" onclick="enablePush()">Включить уведомления</button>
-      <button class="ok" id="notifTestBtn" onclick="testPush()" style="margin-top:8px">Проверить уведомление</button>
-      <div class="meta" id="notifDiag" style="margin-top:8px"></div>
     </div>
     <div class="shift">
       <div class="r"><div class="mark">YaYa</div>
@@ -2770,18 +2767,18 @@ async function saveRadio(){
 /* ── Push-уведомления кабинета ── */
 if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').catch(function(){}); }
 function updateNotifUI(){
-  var btn=document.getElementById('notifBtn'), st=document.getElementById('notifStatus');
-  if(!btn) return;
+  var st=document.getElementById('notifStatus');
+  if(!st) return;
   if(!('Notification' in window)||!('serviceWorker' in navigator)||!('PushManager' in window)){
-    btn.style.display='none'; if(st) st.textContent='Уведомления не поддерживаются этим браузером'; return;
+    st.textContent='Уведомления не поддерживаются этим браузером'; return;
   }
   if(Notification.permission==='denied'){
-    btn.textContent='Уведомления заблокированы'; btn.disabled=true;
-    if(st) st.textContent='Разрешите уведомления в настройках браузера'; return;
+    st.textContent='Уведомления заблокированы — разрешите их в настройках браузера'; return;
   }
-  // granted или default — кнопка ВСЕГДА активна, чтобы можно было (пере)подписаться
-  btn.disabled=false;
-  btn.textContent = (Notification.permission==='granted') ? 'Переподключить уведомления' : 'Включить уведомления';
+  if(Notification.permission==='granted'){
+    st.textContent='Уведомления о новых заказах включены'; return;
+  }
+  st.textContent='Уведомления подключатся автоматически'; // default
 }
 function _b64ToU8(base64){
   var pad='='.repeat((4-base64.length%4)%4);
