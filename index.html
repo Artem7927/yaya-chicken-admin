@@ -775,6 +775,8 @@ button:disabled{opacity:.45}
     <div class="shift" style="margin-top:12px">
       <div class="meta" id="notifStatus" style="margin-bottom:8px">Уведомления о новых заказах</div>
       <button class="ok" id="notifBtn" onclick="enablePush()">Включить уведомления</button>
+      <button class="ok" id="notifTestBtn" onclick="testPush()" style="margin-top:8px">Проверить уведомление</button>
+      <div class="meta" id="notifDiag" style="margin-top:8px"></div>
     </div>
     <div class="shift">
       <div class="r"><div class="mark">YaYa</div>
@@ -2853,7 +2855,62 @@ async function refreshPushSilently(){
     });
   }catch(e){}
 }
-setTimeout(function(){ try{ updateNotifUI(); }catch(e){} try{ refreshPushSilently(); }catch(e){} }, 800);
+// Кнопка «Проверить уведомление»: освежает подписку, показывает состояние
+// сервера и шлёт тестовый пуш админам. Виден результат прямо в кабинете —
+// без консоли. Если баннер не появился при sent≥1 — не доставляет само
+// устройство/браузер (на iPhone кабинет должен быть установлен на «Домой»).
+async function testPush(){
+  var d=document.getElementById('notifDiag');
+  function D(t){ if(d) d.textContent=t; }
+  try{
+    var perm=(typeof Notification!=='undefined')?Notification.permission:'—';
+    if(perm!=='granted'){ D('Сначала нажми «Включить уведомления» и разреши их (сейчас: '+perm+').'); return; }
+    D('Проверяю…');
+    await refreshPushSilently();
+    var st={}; try{ st=await (await fetch(API+'/push/status',{cache:'no-store'})).json(); }catch(e){}
+    var t={}; try{
+      t=await (await fetch(API+'/push/test',{method:'POST',
+        headers:{'Content-Type':'application/json','X-Admin-Token':(typeof ADMIN_KEY!=='undefined'?ADMIN_KEY:'')}})).json();
+    }catch(e){}
+    D('Сервер push: '+(st.push?'включён':'ВЫКЛЮЧЕН')
+      +' · подписок админа: '+(st.admin!=null?st.admin:'?')
+      +' · тест отправлен на: '+(t.sent!=null?t.sent:'?')
+      +'. Баннер должен прийти сейчас. Если нет — установи кабинет на экран «Домой» (особенно на iPhone).');
+  }catch(e){ D('Ошибка проверки: '+(e&&e.name||e)); }
+}
+// Подписка «как у витрины»: если разрешение ещё не выдано — запрашиваем его
+// автоматически при первом касании кабинета (жест нужен для iOS), затем
+// создаём свежую подписку. Если уже выдано — просто освежаем на каждом заходе.
+function _pushSubscribeNow(){
+  return (async function(){
+    try{
+      if(!('serviceWorker' in navigator)||!('PushManager' in window)||!('Notification' in window)) return;
+      if(Notification.permission==='denied') return;
+      if(Notification.permission!=='granted'){
+        var perm=await Notification.requestPermission();
+        if(perm!=='granted') return;
+      }
+      await refreshPushSilently();            // разрешение есть → создаём живую подписку
+      try{ updateNotifUI(); }catch(e){}
+    }catch(e){}
+  })();
+}
+function armPushAuto(){
+  try{
+    if(!('Notification' in window)) return;
+    if(Notification.permission==='granted'){ refreshPushSilently(); return; }
+    if(Notification.permission==='denied') return;
+    // Разрешение ещё не спрашивали — подпишемся при первом касании/клике.
+    var once=function(){
+      document.removeEventListener('pointerdown', once, true);
+      document.removeEventListener('click', once, true);
+      _pushSubscribeNow();
+    };
+    document.addEventListener('pointerdown', once, true);
+    document.addEventListener('click', once, true);
+  }catch(e){}
+}
+setTimeout(function(){ try{ updateNotifUI(); }catch(e){} try{ armPushAuto(); }catch(e){} }, 800);
 </script>
 </body>
 </html>
