@@ -2806,8 +2806,11 @@ async function enablePush(){
     S('Создаю подписку…');
     var sub;
     try{
-      sub=await reg.pushManager.getSubscription();
-      if(!sub) sub=await reg.pushManager.subscribe({userVisibleOnly:true, applicationServerKey:_b64ToU8(keyJson.key)});
+      // Старую подписку всегда сносим — со временем она протухает (endpoint
+      // умирает), сервер этого не знает и молча шлёт в никуда. Пересоздаём.
+      var prev=await reg.pushManager.getSubscription();
+      if(prev){ try{ await prev.unsubscribe(); }catch(e){} }
+      sub=await reg.pushManager.subscribe({userVisibleOnly:true, applicationServerKey:_b64ToU8(keyJson.key)});
     }catch(e){ S('Подписка не создалась: '+(e&&e.name||e)); toast('Ошибка подписки'); return; }
     S('Отправляю на сервер…');
     var r;
