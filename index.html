@@ -1055,9 +1055,13 @@ function parseOrder(o){
 /* ═════════ Статистика ═════════ */
 function renderStats(){
   const P=ORDERS.map(parseOrder);
-  const nNew=P.filter(o=>o.kst==='new').length;
-  const nCook=P.filter(o=>o.kst==='cook').length;
-  const nReady=P.filter(o=>o.kst==='done'&&o.dst!=='delivered').length;
+  // Активные = не доставленные и не отменённые. Заказ, который уже доставлен
+  // (или отменён), но на кухне остался в статусе cook, больше НЕ считается
+  // «в работе». Считаем ровно как во вкладке «Заказы», чтобы цифры совпадали.
+  const active=P.filter(o=>o.dst!=='delivered'&&o.kst!=='cancel');
+  const nNew=active.filter(o=>o.kst==='new').length;
+  const nCook=active.filter(o=>o.kst==='cook').length;
+  const nReady=active.filter(o=>o.kst==='done'&&(o.dst==='pending'||o.dst==='assigned')).length;
   const busyCour=new Set(P.filter(o=>o.courier&&o.dst!=='delivered').map(o=>o.courier));
   document.getElementById('stNew').textContent=nNew;
   try{ if(navigator.setAppBadge){ if(nNew>0) navigator.setAppBadge(nNew); else if(navigator.clearAppBadge) navigator.clearAppBadge(); } }catch(e){}
