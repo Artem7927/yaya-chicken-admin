@@ -2,7 +2,7 @@
    Манифест и страница ВСЕГДА берутся из сети, чтобы Chrome видел свежий
    манифест и предлагал установку. Кэш — только как офлайн-запаска. */
 
-const CACHE = 'yaya-kabinet-v8';
+const CACHE = 'yaya-kabinet-v9';
 const SHELL = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', (e) => {
@@ -72,8 +72,10 @@ self.addEventListener('notificationclick', (e) => {
   e.notification.close();
   const url = (e.notification.data && e.notification.data.url) || './';
   e.waitUntil((async () => {
+    const scope = self.registration.scope; // напр. https://site/yaya-chicken-admin/
     const all = await clients.matchAll({ type: 'window', includeUncontrolled: true });
-    for (const c of all) { if ('focus' in c) return c.focus(); }
+    // Фокусим ТОЛЬКО окно кабинета, а не витрину на том же домене.
+    for (const c of all) { if (c.url && c.url.indexOf(scope) === 0 && 'focus' in c) return c.focus(); }
     if (clients.openWindow) return clients.openWindow(url);
   })());
 });

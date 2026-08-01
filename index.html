@@ -2832,7 +2832,28 @@ async function enablePush(){
     }
   }catch(e){ S('Ошибка: '+(e&&e.name||e)); toast('Ошибка уведомлений'); }
 }
-setTimeout(function(){ try{ updateNotifUI(); }catch(e){} }, 800);
+// Самолечение подписки: если разрешение уже выдано — при каждом открытии
+// кабинета тихо пересоздаём живую подписку (без запроса и без кнопки).
+// Именно из-за протухшей подписки уведомления переставали приходить.
+async function refreshPushSilently(){
+  try{
+    if(!('serviceWorker' in navigator)||!('PushManager' in window)||!('Notification' in window)) return;
+    if(Notification.permission!=='granted') return;
+    var reg=await navigator.serviceWorker.ready;
+    var keyRes=await fetch(API+'/push/public-key',{cache:'no-store'});
+    var keyJson=await keyRes.json();
+    if(!keyJson||!keyJson.key) return;
+    var prev=await reg.pushManager.getSubscription();
+    if(prev){ try{ await prev.unsubscribe(); }catch(e){} }
+    var sub=await reg.pushManager.subscribe({userVisibleOnly:true, applicationServerKey:_b64ToU8(keyJson.key)});
+    await fetch(API+'/push/subscribe',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-Admin-Token':(typeof ADMIN_KEY!=='undefined'?ADMIN_KEY:'')},
+      body:JSON.stringify({role:'admin', sub:sub})
+    });
+  }catch(e){}
+}
+setTimeout(function(){ try{ updateNotifUI(); }catch(e){} try{ refreshPushSilently(); }catch(e){} }, 800);
 </script>
 </body>
 </html>
