@@ -2,7 +2,7 @@
    Манифест и страница ВСЕГДА берутся из сети, чтобы Chrome видел свежий
    манифест и предлагал установку. Кэш — только как офлайн-запаска. */
 
-const CACHE = 'yaya-kabinet-v9';
+const CACHE = 'yaya-kabinet-v10';
 const SHELL = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', (e) => {

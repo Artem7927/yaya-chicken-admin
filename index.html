@@ -841,6 +841,9 @@ async function tryLogin(){
   }catch(e){}
   if(a&&a.auth===true){
     if(!a.ok){ err.textContent='Неверный ключ кабинета'; return; }
+    if(!['admin','MANAGER','SUPERVISOR','ASSEMBLER'].includes(a.role)){
+      err.textContent='Ключ не для админки (роль '+a.role+') — нужен ключ менеджера (ADMIN_TOKEN)'; return;
+    }
     ADMIN_KEY=v; try{ localStorage.setItem('yaya_key',v); }catch(e){}
   } else {
     if(v!==ADMIN_PASSWORD){ err.textContent=a?'Неверный пароль':'Нет связи с сервером'; return; }
@@ -987,6 +990,7 @@ async function tryPost(path,body){
     try{
       const r=await fetchT(API+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
       if(r.ok) return true;
+      if(r.status===401||r.status===403){ lastNetErr='HTTP '+r.status; onAuthFail(); return false; }
       lastNetErr='HTTP '+r.status;
     }catch(e){ lastNetErr=(e&&e.name)||String(e); }
     await new Promise(res=>setTimeout(res,1200));
