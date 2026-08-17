@@ -54,6 +54,6 @@ Vanilla HTML/CSS/JS, без сборки; PWA (manifest + service worker). Вх�
 - Файлы: UTF-8 без BOM, окончания строк CRLF (не смешивать при правках).
 
 TODO(owner):
-- courier.html дублирует функцию репо yaya-chicken-courier — это рабочая копия или устаревший файл?
-- server.js не используется фронтом (API зашит на Railway) — локальный бэкенд нужен или удалить?
-- push-экран (enablePush/testPush, #notifStatus/#notifBtn/#notifDiag) отсутствует в DOM — планируется отдельный экран?
+- courier.html: мёртвый дубль — ссылок в коде нет (только CONTEXT.md), под снос отдельной задачей.
+- server.js: Node/Express в репо, фронтом не используется — оставлен намеренно.
+- push-экран: JS updateNotifUI/enablePush/testPush ссылаются на #notifStatus/#notifBtn/#notifDiag, которых нет в DOM; guard не роняет. Судьба не решена (TODO owner).
