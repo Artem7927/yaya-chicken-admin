@@ -1074,6 +1074,13 @@ function parseOrder(o){
   return {id:o.id,num:o.num||o.id,kst:o.status||'new',dst:o.delivery_status||'pending',
     courier:o.courier||'',ts:o.ts,address,isDelivery,total,items,phone,name,comment:d.comment||'',pay:d.pay_method||''};
 }
+function mixMenuImgs(items){
+  if(!items||!Array.isArray(items)||!items.length||!Array.isArray(MENU)||!MENU.length)return;
+  const byId={};
+  MENU.forEach(c=>((c&&c.items)||[]).forEach(it=>{if(it&&it.id!=null)byId[String(it.id)]=it.img||'';}));
+  if(!Object.keys(byId).length)return;
+  items.forEach(i=>{if(i&&i.id!=null&&!i.img)i.img=byId[String(i.id)]||'';});
+}
 
 /* ═════════ Статистика ═════════ */
 function renderStats(){
@@ -1146,8 +1153,9 @@ function printReceiptFromOrder(o){
 }
 let _rcptCur=null;
 function openRcpt(id){
-  const raw=ORDERS.find(x=>x.id===id);
+  const raw=ORDERS.find(x=>String(x.id)===String(id));
   if(!raw){toast('Заказ не найден');return;}
+  mixMenuImgs(raw.items);
   _rcptCur=raw;
   document.getElementById('rcptBody').innerHTML=renderReceiptFromOrder(raw);
   document.getElementById('rcptModal').classList.add('open');
