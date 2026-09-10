@@ -5,7 +5,7 @@
   "description": "Панель управления YaYa Chicken: заказы, курьеры, товары, табло",
   "lang": "ru",
   "start_url": "./index.html",
-  "scope": "./index.html",
+  "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#0F0E0C",

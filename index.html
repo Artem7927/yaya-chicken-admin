@@ -1144,12 +1144,16 @@ function renderReceiptFromOrder(_o){
     </div></div>`;
 }
 function printReceiptFromOrder(o){
-  let area=document.getElementById('rcptPrintArea');
-  if(!area){area=document.createElement('div');area.id='rcptPrintArea';area.style.visibility='hidden';document.body.appendChild(area);}
-  area.innerHTML=renderReceiptFromOrder(o);
-  let st=document.getElementById('rcptPrintStyle');
-  if(!st){st=document.createElement('style');st.id='rcptPrintStyle';st.innerHTML='@media print{body *{visibility:hidden!important}#rcptPrintArea,#rcptPrintArea *{visibility:visible!important}#rcptPrintArea{position:fixed;left:0;top:0;right:0;width:100%;background:#fff}}';document.head.appendChild(st);}
-  try{window.print();}catch(e){toast('Печать недоступна');}
+  const html='<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Квитанция</title></head><body style="margin:0;background:#eee;padding:12px">'
+    + renderReceiptFromOrder(o)
+    + '<div style="text-align:center;padding:16px"><button onclick="window.print()" style="padding:14px 28px;font:800 16px Arial,sans-serif;border:none;border-radius:12px;background:#F4821F;color:#fff;cursor:pointer">Сохранить / Печать</button></div></body></html>';
+  let w=null;
+  try{ w=window.open('','_blank'); }catch(e){ w=null; }
+  if(w&&w.document){ w.document.write(html); w.document.close(); }
+  else{
+    try{ window.open('data:text/html;charset=utf-8,'+encodeURIComponent(html),'_blank'); }
+    catch(e2){ toast('Печать недоступна'); }
+  }
 }
 let _rcptCur=null;
 function openRcpt(id){
