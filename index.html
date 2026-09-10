@@ -1173,7 +1173,8 @@ async function openRcpt(id){
   const raw=ORDERS.find(x=>String(x.id)===String(id));
   if(!raw){toast('Заказ не найден');return;}
   if(!(Array.isArray(MENU)&&MENU.length)) await loadRcptMenu();
-  mixMenuImgs(raw.items);
+  const _its=Array.isArray(raw.data&&raw.data.items)?raw.data.items:(Array.isArray(raw.items)?raw.items:[]);
+  if(_its.length) mixMenuImgs(_its);
   _rcptCur=raw;
   document.getElementById('rcptBody').innerHTML=renderReceiptFromOrder(raw);
   document.getElementById('rcptModal').classList.add('open');
