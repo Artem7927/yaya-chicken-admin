@@ -3013,5 +3013,60 @@ function armPushAuto(){
 }
 setTimeout(function(){ try{ updateNotifUI(); }catch(e){} try{ armPushAuto(); }catch(e){} }, 800);
 </script>
+
+<!-- ═════ Подсказка установки PWA (умная, по браузеру) ═════ -->
+<style id="yy-a2hs-style">
+#yyA2hs{position:fixed;left:12px;right:12px;bottom:14px;z-index:99999;display:none;align-items:center;gap:10px;max-width:456px;margin:0 auto;background:#1c1a17;color:#fff;border:1px solid rgba(244,180,0,.35);border-radius:14px;padding:11px 12px;box-shadow:0 8px 30px rgba(0,0,0,.45);font:700 12.5px Nunito,Arial,system-ui,sans-serif;line-height:1.35}
+#yyA2hs .ya-ic{flex:0 0 auto;width:32px;height:32px;border-radius:9px;background:#F4821F;display:flex;align-items:center;justify-content:center;font-size:16px}
+#yyA2hs .ya-tx{flex:1;min-width:0}
+#yyA2hs .ya-x{flex:0 0 auto;background:none;border:none;color:#9a9a9a;font-size:17px;cursor:pointer;padding:2px 6px;line-height:1}
+#yyA2hs .ya-btn{display:inline-flex;align-items:center;gap:5px;background:#F4821F;color:#111;border:none;border-radius:10px;padding:8px 14px;font:900 12.5px Nunito,Arial,system-ui,sans-serif;cursor:pointer}
+</style>
+<script>
+(function(){
+  try{
+    if(document.getElementById('yyA2hs'))return;
+    var DISMISS='yaya_a2hs_dismissed';
+    try{ if(parseInt(localStorage.getItem(DISMISS)||'0',10)>Date.now()) return; }catch(e){}
+    if(window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches)return;
+    if(navigator.standalone===true)return;
+    var UA='';try{UA=navigator.userAgent||'';}catch(e){}
+    var isIOS=/iPhone|iPad|iPod/.test(UA)||(/Macintosh/.test(UA)&&navigator.maxTouchPoints>1&&!/Chrome/.test(UA));
+    var isInApp=/(FBAN|FBAV|Instagram|WhatsApp|Line)/i.test(UA)||/wv[;)]|WebView/i.test(UA);
+    var el=document.createElement('div');el.id='yyA2hs';
+    el.innerHTML='<div class="ya-ic"></div><div class="ya-tx"></div><button class="ya-x" aria-label="Скрыть">✕</button>';
+    document.body.appendChild(el);
+    var ic=el.children[0],tx=el.children[1],x=el.children[2],shown=false;
+    function hide(){el.style.display='none';}
+    function remember(){try{localStorage.setItem(DISMISS,String(Date.now()+7*864e5));}catch(e){}}
+    function show(html,glyph,force){if(shown&&!force)return;shown=true;ic.textContent=glyph;tx.innerHTML=html;el.style.display='flex';}
+    x.onclick=function(){remember();hide();};
+    function fallback(){
+      if(isIOS)show('Нажмите <b>⬆️</b> (Поделиться), затем <b>«На экран Домой»</b>','⬆️');
+      else if(isInApp)show('Откройте в браузере для установки: меню <b>⋮</b> → <b>Открыть в Chrome/Safari</b>','🌐');
+      else show('Меню браузера <b>⋮</b> → <b>Установить</b> / <b>Добавить на главный экран</b>','⬇️');
+    }
+    setTimeout(fallback,2500);
+    window.addEventListener('beforeinstallprompt',function(e){
+      e.preventDefault();
+      window.yyDeferredPrompt=e;
+      var b=el.querySelector('.ya-btn');
+      if(!b){
+        b=document.createElement('button');b.className='ya-btn';b.textContent='Установить приложение';
+        el.insertBefore(b,x);
+        b.onclick=function(){
+          var p=window.yyDeferredPrompt;
+          if(!p)return;
+          p.prompt();
+          p.userChoice.then(function(){hide();});
+          window.yyDeferredPrompt=null;
+        };
+      }
+      show('Установите приложение YaYa Chicken — открывается в один клик','⬇️',true);
+    });
+    window.addEventListener('appinstalled',function(){hide();});
+  }catch(e){}
+})();
+</script>
 </body>
 </html>
