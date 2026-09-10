@@ -109,6 +109,10 @@ input,select{font-family:inherit}
 .item .q{color:var(--text2);font-weight:800;margin-right:8px}
 .item .pr{color:var(--text2);font-weight:800}
 
+.payline{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:800;margin:5px 0 0;padding:8px 11px;border-radius:10px}
+.payline.ok{background:rgba(53,199,126,.1);border:1px solid rgba(53,199,126,.35);color:var(--green)}
+.payline.nopay{background:var(--panel2);border:1px dashed var(--border2);color:var(--text2)}
+
 .ctrl{margin-top:11px;display:flex;flex-direction:column;gap:8px}
 .ctrl select{width:100%;background:var(--panel2);border:1px solid var(--border2);color:var(--text);
   border-radius:11px;padding:11px;font-weight:800;font-size:14px}
@@ -981,6 +985,7 @@ function overlayCour(){
     if(!c) return;
     if(c.courier!==undefined) o.courier=c.courier;
     if(c.delivery_status!==undefined) o.delivery_status=c.delivery_status;
+    if(c.pay) o.payFact=c.pay;
   });
 }
 
@@ -1072,7 +1077,7 @@ function parseOrder(o){
   const phone=d.recipient_phone||d.pay_phone||d.phone||'';
   const name=d.recipient_name||d.name||d.pay_name||'Клиент';
   return {id:o.id,num:o.num||o.id,kst:o.status||'new',dst:o.delivery_status||'pending',
-    courier:o.courier||'',ts:o.ts,address,isDelivery,total,items,phone,name,comment:d.comment||'',pay:d.pay_method||''};
+    courier:o.courier||'',ts:o.ts,address,isDelivery,total,items,phone,name,comment:d.comment||'',pay:d.pay_method||'',payFact:o.payFact||null};
 }
 let _rcptMenu=null;
 async function loadRcptMenu(){
@@ -1181,6 +1186,16 @@ async function openRcpt(id){
 }
 function closeRcpt(){document.getElementById('rcptModal').classList.remove('open');_rcptCur=null;}
 function printCurRcpt(){if(_rcptCur)printReceiptFromOrder(_rcptCur);}
+const _PM={'cash':'Наличные','kaspi-qr':'Kaspi QR','remote':'Удалённо'};
+const _PR={'undelivered':'Не доложили','refused':'Клиент отказался','missing':'Нет в наличии','defect':'Брак','other':'Другое'};
+function payLine(o){
+  if(o.kst==='cancel') return '';
+  const p=o.payFact;
+  if(!p) return `<div class="payline nopay">Оплата не принята</div>`;
+  const m=_PM[p.method]||p.method;
+  const sh=(p.reason||p.reason_note)?` · недовоз: ${esc(p.reason_note||(_PR[p.reason]||p.reason))}`:'';
+  return `<div class="payline ok">Оплачено: ${m} ${fmtNum(p.amount)} ₸${sh}</div>`;
+}
 function ordCard(o,compact){
   const kb={new:'b-new',cook:'b-cook',done:'b-done',cancel:'b-cancel'}[o.kst]||'b-gray';
   let items='';
@@ -1230,7 +1245,7 @@ function ordCard(o,compact){
       <span class="badge ${kb}">${KST_LABEL[o.kst]||o.kst}</span>${courierBadge}
       <span class="time">${fmtTime(o.ts)}</span></div>
     <div class="line"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg><b>${esc(o.name)}</b></div>
-    ${phone}${addr}${comment}${items}${ctrl}
+    ${phone}${addr}${comment}${items}${payLine(o)}${ctrl}
     ${!compact?`<div style="padding:0 16px 14px"><button class="btn-line" style="width:100%" onclick="openRcpt(${o.id})">Квитанция</button></div>`:''}</div>`;
 }
 
