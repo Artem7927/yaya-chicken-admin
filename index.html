@@ -1074,10 +1074,23 @@ function parseOrder(o){
   return {id:o.id,num:o.num||o.id,kst:o.status||'new',dst:o.delivery_status||'pending',
     courier:o.courier||'',ts:o.ts,address,isDelivery,total,items,phone,name,comment:d.comment||'',pay:d.pay_method||''};
 }
+let _rcptMenu=null;
+async function loadRcptMenu(){
+  if(_rcptMenu) return _rcptMenu;
+  try{
+    const j=await api('/kv/'+MENU_KEY+'?_='+Date.now());
+    const v=j&&j.value;
+    if(v&&Array.isArray(v.categories)&&v.categories.length) _rcptMenu=v.categories;
+    else if(Array.isArray(v)&&v.length) _rcptMenu=v;
+    else _rcptMenu=[];
+  }catch(e){ _rcptMenu=[]; }
+  return _rcptMenu;
+}
 function mixMenuImgs(items){
-  if(!items||!Array.isArray(items)||!items.length||!Array.isArray(MENU)||!MENU.length)return;
+  if(!items||!Array.isArray(items)||!items.length)return;
+  const src=(Array.isArray(MENU)&&MENU.length)?MENU:(_rcptMenu||[]);
   const byId={};
-  MENU.forEach(c=>((c&&c.items)||[]).forEach(it=>{if(it&&it.id!=null)byId[String(it.id)]=it.img||'';}));
+  src.forEach(c=>((c&&c.items)||[]).forEach(it=>{if(it&&it.id!=null)byId[String(it.id)]=it.img||'';}));
   if(!Object.keys(byId).length)return;
   items.forEach(i=>{if(i&&i.id!=null&&!i.img)i.img=byId[String(i.id)]||'';});
 }
@@ -1156,9 +1169,10 @@ function printReceiptFromOrder(o){
   }
 }
 let _rcptCur=null;
-function openRcpt(id){
+async function openRcpt(id){
   const raw=ORDERS.find(x=>String(x.id)===String(id));
   if(!raw){toast('Заказ не найден');return;}
+  if(!(Array.isArray(MENU)&&MENU.length)) await loadRcptMenu();
   mixMenuImgs(raw.items);
   _rcptCur=raw;
   document.getElementById('rcptBody').innerHTML=renderReceiptFromOrder(raw);
