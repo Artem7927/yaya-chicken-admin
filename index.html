@@ -775,6 +775,18 @@ button:disabled{opacity:.45}
     </div>
   </div>
 
+  <!-- КВИТАНЦИЯ -->
+  <div class="modal" id="rcptModal" onclick="if(event.target===this)closeRcpt()">
+    <div class="sheet">
+      <div class="mt">Квитанция</div>
+      <div id="rcptBody" style="margin:0 16px 14px"></div>
+      <div class="mrow">
+        <button class="no" onclick="closeRcpt()">Закрыть</button>
+        <button class="ok" onclick="printCurRcpt()">Печать / Сохранить PDF</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ЕЩЁ -->
   <section class="screen" id="s-more">
     <header class="hd"><div class="t">Ещё</div></header>
@@ -1090,6 +1102,58 @@ function renderStats(){
 }
 
 /* ═════════ Карточка заказа ═════════ */
+/* ── Квитанция из данных заказа (единый вид на все кабинеты, из o.data + o.ts; НЕ из корзины) ── */
+function _rcpEsc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+function _rcpPay(p){return ({'kaspi-qr':'Kaspi QR','cash':'Наличные','card':'Карта','kaspi-remote':'Kaspi (удалённо)','halyk-remote':'Halyk (удалённо)'})[p]||p||'Оплата';}
+function _rcpMoney(n){return Number(n||0).toLocaleString('ru')+' ₸';}
+function renderReceiptFromOrder(_o){
+  const o=_o||{},d=o.data||o;
+  const num=o.num!=null?o.num:(d.order_num!=null?d.order_num:'—');
+  const ts=Number(o.ts!=null?o.ts:d.ts)||Date.now();
+  const items=Array.isArray(d.items)?d.items:[];
+  const food=(d.total!=null&&!isNaN(+d.total))?Number(d.total):items.reduce((s,i)=>s+(Number(i.price)||0)*(Number(i.qty)||0),0);
+  const deliv=(d.delivery!=null&&!isNaN(+d.delivery))?Number(d.delivery):0;
+  const name=d.recipient_name||d.name||'',phone=d.recipient_phone||d.pay_phone||d.phone||'',addr=d.address||'',comm=d.comment||'',pay=_rcpPay(d.pay_method||d.pay);
+  let dt='';try{dt=new Date(ts).toLocaleString('ru',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});}catch(e){}
+  const rows=(items.map(i=>{const q=Number(i.qty)||1,p=Number(i.price)||0,nm=_rcpEsc(i.name||'—');
+    const img=i.img?`<img src="${_rcpEsc(i.img)}" style="width:42px;height:42px;border-radius:10px;object-fit:cover;flex:0 0 auto" alt="">`:`<div style="width:42px;height:42px;border-radius:10px;background:#f0f0f0;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;color:#b98a00;flex:0 0 auto">${_rcpEsc((i.name||'—').charAt(0))}</div>`;
+    return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px dashed #e5e5e5"><div style="min-width:0">${img}</div><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:800;line-height:1.25">${nm}</div><div style="font-size:12px;color:#999;font-weight:700">${q} × ${_rcpMoney(p)}</div></div><div style="font-size:13px;font-weight:900;white-space:nowrap">${p?_rcpMoney(p*q):'—'}</div></div>`;
+  })).join('');
+  const infos=[name?`Имя: ${_rcpEsc(name)}`:null,phone?`Телефон: ${_rcpEsc(phone)}`:null,pay?`Оплата: ${_rcpEsc(pay)}`:null,addr?`Адрес: ${_rcpEsc(addr)}`:null,comm?`Комментарий: ${_rcpEsc(comm)}`:null].filter(Boolean);
+  return `<div style="width:100%;background:#fff;border-radius:16px;overflow:hidden;color:#111">
+    <div style="background:#F4821F;padding:14px 16px;text-align:center">
+      <div style="color:#fff;font-size:18px;font-weight:900;letter-spacing:.3px">YaYa Chicken</div>
+      <div style="color:rgba(255,255,255,.92);font-size:12px;font-weight:700;margin-top:2px">ул. Абая, 49/5 · Экибастуз</div>
+      <div style="color:rgba(255,255,255,.78);font-size:11px;margin-top:6px">Квитанция №${_rcpEsc(String(num))} · ${dt}</div>
+    </div>
+    <div style="padding:2px 14px 14px">
+      ${rows||'<div style="font-size:12.5px;color:#999;padding:10px 0;font-weight:700">Состав не указан</div>'}
+      <div style="margin-top:6px">
+        <div style="display:flex;justify-content:space-between;font-size:13px;color:#444;font-weight:700;padding:3px 0"><span>Сумма блюд</span><span>${_rcpMoney(food)}</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:13px;color:#444;font-weight:700;padding:3px 0"><span>Доставка</span><span style="color:#c98700">${deliv>0?_rcpMoney(deliv):'Бесплатно'}</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:15px;font-weight:900;padding:8px 0 4px;border-top:2px solid #111"><span>К ОПЛАТЕ</span><span style="color:#c98700">${_rcpMoney(food+deliv)}</span></div>
+      </div>
+      ${infos.length?`<div style="background:#f5f5f5;border-radius:10px;padding:10px 12px;margin-top:10px;font-size:12px;font-weight:700;color:#555;line-height:1.9">${infos.map(x=>`<div>${x}</div>`).join('')}</div>`:''}
+    </div></div>`;
+}
+function printReceiptFromOrder(o){
+  let area=document.getElementById('rcptPrintArea');
+  if(!area){area=document.createElement('div');area.id='rcptPrintArea';area.style.visibility='hidden';document.body.appendChild(area);}
+  area.innerHTML=renderReceiptFromOrder(o);
+  let st=document.getElementById('rcptPrintStyle');
+  if(!st){st=document.createElement('style');st.id='rcptPrintStyle';st.innerHTML='@media print{body *{visibility:hidden!important}#rcptPrintArea,#rcptPrintArea *{visibility:visible!important}#rcptPrintArea{position:fixed;left:0;top:0;right:0;width:100%;background:#fff}}';document.head.appendChild(st);}
+  try{window.print();}catch(e){toast('Печать недоступна');}
+}
+let _rcptCur=null;
+function openRcpt(id){
+  const raw=ORDERS.find(x=>x.id===id);
+  if(!raw){toast('Заказ не найден');return;}
+  _rcptCur=raw;
+  document.getElementById('rcptBody').innerHTML=renderReceiptFromOrder(raw);
+  document.getElementById('rcptModal').classList.add('open');
+}
+function closeRcpt(){document.getElementById('rcptModal').classList.remove('open');_rcptCur=null;}
+function printCurRcpt(){if(_rcptCur)printReceiptFromOrder(_rcptCur);}
 function ordCard(o,compact){
   const kb={new:'b-new',cook:'b-cook',done:'b-done',cancel:'b-cancel'}[o.kst]||'b-gray';
   let items='';
@@ -1139,7 +1203,8 @@ function ordCard(o,compact){
       <span class="badge ${kb}">${KST_LABEL[o.kst]||o.kst}</span>${courierBadge}
       <span class="time">${fmtTime(o.ts)}</span></div>
     <div class="line"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg><b>${esc(o.name)}</b></div>
-    ${phone}${addr}${comment}${items}${ctrl}</div>`;
+    ${phone}${addr}${comment}${items}${ctrl}
+    ${!compact?`<div style="padding:0 16px 14px"><button class="btn-line" style="width:100%" onclick="openRcpt(${o.id})">Квитанция</button></div>`:''}</div>`;
 }
 
 /* ═════════ Экран Заказы ═════════ */
