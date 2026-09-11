@@ -133,6 +133,16 @@ input,select{font-family:inherit}
 .seg button{flex:1;padding:11px;border:none;background:transparent;color:var(--text2);font-weight:800;font-size:14px;border-radius:10px}
 .seg button.active{background:var(--gold);color:#1a1400}
 
+/* Фильтр периода День/Месяц/Год (портирован из manager-mobile) */
+.ptabs{display:flex;background:var(--panel2);border:1px solid var(--border);border-radius:11px;padding:3px;margin-bottom:10px}
+.ptab{flex:1;border:none;background:none;color:var(--muted);font-size:12px;font-weight:700;padding:8px 4px;border-radius:8px;cursor:pointer;font-family:inherit;transition:.15s}
+.ptab.on{background:var(--gold);color:#1a1400}
+.arow{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.arow .ab{width:36px;height:36px;border-radius:10px;border:none;background:rgba(245,130,32,.14);color:var(--orange);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit}
+.arow .ab:active{transform:scale(.95)}
+.arow .ab[disabled]{opacity:.25;pointer-events:none}
+.arow .ac{font-size:15px;font-weight:700;letter-spacing:-.2px}
+
 .cour{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:14px;margin:0 16px 11px;display:flex;gap:13px}
 .ava{width:52px;height:52px;border-radius:14px;flex:none;display:flex;align-items:center;justify-content:center;
   font:900 19px Nunito;color:#1a1400;background:radial-gradient(circle at 35% 30%,#FFD860,var(--gold) 60%,var(--gold-d))}
@@ -388,6 +398,7 @@ button:disabled{opacity:.45}
       <div class="acts"><div class="iconbtn" onclick="loadOrders(true)"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"/></svg></div></div>
     </header>
     <div class="tabs" id="orderTabs"></div>
+    <div id="dfWidget" style="display:none;margin:0 16px 10px"></div>
     <div id="orderList"><div class="loading"><div class="spinner"></div>Загружаю заказы…</div></div>
   </section>
 
@@ -1249,6 +1260,57 @@ function ordCard(o,compact){
     ${!compact?`<div style="padding:0 16px 14px"><button class="btn-line" style="width:100%" onclick="openRcpt(${o.id})">Квитанция</button></div>`:''}</div>`;
 }
 
+/* ── Фильтр периода: День/Месяц/Год + перелистывание (портирован из manager-mobile, _ord*→_df*) ── */
+let _dfPeriod='day',_dfCursor=(()=>{const t=new Date();return{y:t.getFullYear(),m:t.getMonth(),d:t.getDate()}})();
+function _dfToday(){return new Date();}
+function _dfIsFuture(){
+  const t=_dfToday();
+  if(_dfPeriod==='day')return _dfCursor.y===t.getFullYear()&&_dfCursor.m===t.getMonth()&&_dfCursor.d===t.getDate();
+  if(_dfPeriod==='month')return _dfCursor.y===t.getFullYear()&&_dfCursor.m===t.getMonth();
+  return _dfCursor.y===t.getFullYear();
+}
+function _dfSetMode(m){
+  _dfPeriod=m;const t=_dfToday();
+  if(m==='day')_dfCursor={y:t.getFullYear(),m:t.getMonth(),d:t.getDate()};
+  else if(m==='month')_dfCursor={y:t.getFullYear(),m:t.getMonth()};
+  else _dfCursor={y:t.getFullYear()};
+  _dfRender();
+}
+function _dfStep(dir){
+  const c=_dfCursor,t=_dfToday();
+  if(_dfPeriod==='day'){
+    const d=new Date(c.y,c.m,c.d+dir);
+    if(dir>0&&d>t)return;
+    _dfCursor={y:d.getFullYear(),m:d.getMonth(),d:d.getDate()};
+  }else if(_dfPeriod==='month'){
+    if(dir>0&&c.y===t.getFullYear()&&c.m===t.getMonth())return;
+    let nm=c.m+dir,ny=c.y;
+    if(nm<0){nm=11;ny--;}else if(nm>11){nm=0;ny++;}
+    _dfCursor={y:ny,m:nm};
+  }else{
+    if(dir>0&&c.y===t.getFullYear())return;
+    _dfCursor={y:c.y+dir};
+  }
+  _dfRender();
+}
+function _dfCenter(){
+  if(_dfPeriod==='day')return _dfCursor.d+' '+(['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'][_dfCursor.m])+' '+_dfCursor.y;
+  if(_dfPeriod==='month')return ['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'][_dfCursor.m]+' '+_dfCursor.y;
+  return String(_dfCursor.y);
+}
+function _dfRange(){
+  const c=_dfCursor;let s,t;
+  if(_dfPeriod==='day'){s=new Date(c.y,c.m,c.d,0,0,0,0);t=new Date(c.y,c.m,c.d+1,0,0,0,0);}
+  else if(_dfPeriod==='month'){s=new Date(c.y,c.m,1);t=new Date(c.y,c.m+1,1);}
+  else {s=new Date(c.y,0,1);t=new Date(c.y+1,0,1);}
+  return [s.getTime(),t.getTime()];
+}
+function _dfTs(o){return Number(o&&o.ts!=null?o.ts:0)||0;}
+function _dfWidgetHtml(){
+  return `<div class="ptabs"><button class="ptab ${_dfPeriod==='day'?'on':''}" onclick="_dfSetMode('day')">День</button><button class="ptab ${_dfPeriod==='month'?'on':''}" onclick="_dfSetMode('month')">Месяц</button><button class="ptab ${_dfPeriod==='year'?'on':''}" onclick="_dfSetMode('year')">Год</button></div><div class="arow"><button class="ab" onclick="_dfStep(-1)">◄</button><span class="ac">${_dfCenter()}</span><button class="ab" ${_dfIsFuture()?'disabled':''} onclick="_dfStep(1)">►</button></div>`;
+}
+let _dfRender=renderOrders;
+
 /* ═════════ Экран Заказы ═════════ */
 const OTABS=[['new','Новые'],['cook','Готовятся'],['ready','Готовы'],['deliv','Доставка'],['done','Завершённые']];
 let curTab='new';
@@ -1275,7 +1337,13 @@ function renderTabs(){
 function filterOrders(k){ curTab=k; renderTabs(); renderOrders(); }
 function renderOrders(){
   renderTabs();
-  const P=ORDERS.map(parseOrder).filter(o=>tabMatch(o,curTab)).sort((a,b)=>b.ts-a.ts);
+  const wg=document.getElementById('dfWidget');
+  if(wg){ wg.style.display=curTab==='done'?'':'none'; if(curTab==='done')wg.innerHTML=_dfWidgetHtml(); }
+  let P=ORDERS.map(parseOrder).filter(o=>tabMatch(o,curTab)).sort((a,b)=>b.ts-a.ts);
+  if(curTab==='done'){
+    const [rs,re]=_dfRange();
+    P=P.filter(o=>{const ts=_dfTs(o);return ts>=rs&&ts<re;});
+  }
   document.getElementById('orderList').innerHTML=P.length
     ? P.map(o=>ordCard(o,false)).join('')
     : `<div class="empty">В этом статусе заказов нет</div>`;
