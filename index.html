@@ -1114,13 +1114,12 @@ function mixMenuImgs(items){
 /* ═════════ Статистика ═════════ */
 function renderStats(){
   const P=ORDERS.map(parseOrder);
-  // Активные = не доставленные и не отменённые. Заказ, который уже доставлен
-  // (или отменён), но на кухне остался в статусе cook, больше НЕ считается
-  // «в работе». Считаем ровно как во вкладке «Заказы», чтобы цифры совпадали.
-  const active=P.filter(o=>o.dst!=='delivered'&&o.kst!=='cancel');
+  // Активные = только new|cook (как у менеджера). fulfilled/done/cancel в «Активные» не входят.
+  // «Готовы к выдаче» (done, ждёт курьера) — отдельный счётчик, от активных не зависит.
+  const active=P.filter(o=>o.kst==='new'||o.kst==='cook');
   const nNew=active.filter(o=>o.kst==='new').length;
   const nCook=active.filter(o=>o.kst==='cook').length;
-  const nReady=active.filter(o=>o.kst==='done'&&(o.dst==='pending'||o.dst==='assigned')).length;
+  const nReady=P.filter(o=>o.kst==='done'&&(o.dst==='pending'||o.dst==='assigned')).length;
   const busyCour=new Set(P.filter(o=>o.courier&&o.dst!=='delivered').map(o=>o.courier));
   document.getElementById('stNew').textContent=nNew;
   try{ if(navigator.setAppBadge){ if(nNew>0) navigator.setAppBadge(nNew); else if(navigator.clearAppBadge) navigator.clearAppBadge(); } }catch(e){}
@@ -1349,7 +1348,7 @@ function renderOrders(){
     : `<div class="empty">В этом статусе заказов нет</div>`;
 }
 function renderHomeOrders(){
-  const P=ORDERS.map(parseOrder).filter(o=>o.kst!=='cancel'&&o.dst!=='delivered').sort((a,b)=>b.ts-a.ts).slice(0,4);
+  const P=ORDERS.map(parseOrder).filter(o=>o.kst==='new'||o.kst==='cook').sort((a,b)=>b.ts-a.ts).slice(0,4);
   document.getElementById('homeOrders').innerHTML=P.length
     ? P.map(o=>ordCard(o,true)).join('')
     : `<div class="empty">Активных заказов нет</div>`;
