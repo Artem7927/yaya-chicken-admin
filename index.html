@@ -958,7 +958,7 @@ function _ynSoundOn(){try{return localStorage.getItem('yaya_notify_sound')!=='0'
 function _ynSetSound(o){try{localStorage.setItem('yaya_notify_sound',o?'1':'0');}catch(e){}_ynSyncToggle();}
 function _ynSyncToggle(){var b=document.getElementById('yn-toggle');if(b)b.textContent=_ynSoundOn()?'🔔':'🔕';}
 function _ynBeep(){if(!_ynSoundOn())return;try{var A=window.AudioContext||window.webkitAudioContext;var ac=new A();var o=ac.createOscillator(),g=ac.createGain();o.connect(g);g.connect(ac.destination);o.type='sine';o.frequency.value=880;g.gain.setValueAtTime(0.0001,ac.currentTime);g.gain.exponentialRampToValueAtTime(0.3,ac.currentTime+0.01);g.gain.exponentialRampToValueAtTime(0.0001,ac.currentTime+0.25);o.start();o.stop(ac.currentTime+0.26);}catch(e){}}
-function _ynToast(m){try{toast(m,'info');}catch(e){try{toast(m);}catch(_){}}}
+function _ynToast(m){try{toast(m);}catch(e){}}
 var _ynSeen={};
 function _ynNew(key,ids){var cur={};(ids||[]).forEach(function(x){cur[String(x)]=1;});var prev=_ynSeen[key];_ynSeen[key]=cur;if(!prev)return[];return(ids||[]).filter(function(x){return !prev[String(x)];});}
 function _ynAnnounce(key,ids,one,many){var n=_ynNew(key,ids);if(!n.length)return;if(n.length>2){_ynToast(many.replace('{n}',n.length));}else{n.forEach(function(id){_ynToast(one(id));});}_ynBeep();}
