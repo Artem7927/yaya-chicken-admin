@@ -367,6 +367,7 @@ button:disabled{opacity:.45}
         <svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0"/></svg>
         <span class="dot hide" id="bellDot">0</span>
       </div>
+      <button id="yn-toggle" title="Звук уведомлений" onclick="_ynSetSound(!_ynSoundOn())" style="background:none;border:none;font-size:20px;cursor:pointer;line-height:1;">🔔</button>
     </header>
     <div class="offline" id="offline">Нет связи с сервером. Показаны последние данные. Проверяю снова…</div>
     <div class="branch">Филиал: YaYa Chicken на Абая
@@ -952,6 +953,17 @@ async function api(path,opts){
   return r.json();
 }
 
+/* --- YaYa notify --- */
+function _ynSoundOn(){try{return localStorage.getItem('yaya_notify_sound')!=='0';}catch(e){return true;}}
+function _ynSetSound(o){try{localStorage.setItem('yaya_notify_sound',o?'1':'0');}catch(e){}_ynSyncToggle();}
+function _ynSyncToggle(){var b=document.getElementById('yn-toggle');if(b)b.textContent=_ynSoundOn()?'🔔':'🔕';}
+function _ynBeep(){if(!_ynSoundOn())return;try{var A=window.AudioContext||window.webkitAudioContext;var ac=new A();var o=ac.createOscillator(),g=ac.createGain();o.connect(g);g.connect(ac.destination);o.type='sine';o.frequency.value=880;g.gain.setValueAtTime(0.0001,ac.currentTime);g.gain.exponentialRampToValueAtTime(0.3,ac.currentTime+0.01);g.gain.exponentialRampToValueAtTime(0.0001,ac.currentTime+0.25);o.start();o.stop(ac.currentTime+0.26);}catch(e){}}
+function _ynToast(m){try{toast(m,'info');}catch(e){try{toast(m);}catch(_){}}}
+var _ynSeen={};
+function _ynNew(key,ids){var cur={};(ids||[]).forEach(function(x){cur[String(x)]=1;});var prev=_ynSeen[key];_ynSeen[key]=cur;if(!prev)return[];return(ids||[]).filter(function(x){return !prev[String(x)];});}
+function _ynAnnounce(key,ids,one,many){var n=_ynNew(key,ids);if(!n.length)return;if(n.length>2){_ynToast(many.replace('{n}',n.length));}else{n.forEach(function(id){_ynToast(one(id));});}_ynBeep();}
+_ynSyncToggle();
+
 /* ── Заказы + курьеры ── */
 let pollTimer;
 async function startAll(){
@@ -967,6 +979,7 @@ async function loadOrders(manual){
   try{
     const j=await api('/orders?limit=100');
     ORDERS=Array.isArray(j.orders)?j.orders:[];
+    _ynAnnounce('a_ord', ORDERS.filter(o=>o.status==='new'&&o.num!=null).map(o=>String(o.num)), function(n){return 'Новый заказ №'+n;}, 'Новых заказов: {n}');
     await refreshCour();                  // подтягиваем свежие статусы доставки от курьера
     overlayCour();                        // курьер/доставка — из надёжного /kv
     applyPending();                       // не даём опросу затирать несохранённый статус кухни
